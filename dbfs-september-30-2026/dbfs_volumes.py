@@ -44,9 +44,9 @@ spark.sql(f"USE SCHEMA {schema}")
 # COMMAND ----------
 
 stores_csv = """store_id,store_name,city,country,opened_date
-STORE001,Sklep Centrum,Warszawa,Poland,2021-03-01
-STORE002,Sklep Rynek,Krakow,Poland,2022-06-15
-STORE003,Sklep Port,Gdansk,Poland,2023-01-10
+STORE001,City Centre Store,Warszawa,Poland,2021-03-01
+STORE002,Market Square Store,Krakow,Poland,2022-06-15
+STORE003,Harbour Store,Gdansk,Poland,2023-01-10
 STORE004,Downtown Store,Austin,USA,2023-09-01
 STORE005,Riverside Store,Seattle,USA,2024-04-20
 """

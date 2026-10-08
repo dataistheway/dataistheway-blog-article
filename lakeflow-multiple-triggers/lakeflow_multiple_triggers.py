@@ -8,7 +8,7 @@
 # MAGIC We check which trigger started a run, what an update with one trigger does, and whether the legacy `schedule` can be added.
 # MAGIC
 # MAGIC **Requires:** a full (Premium) workspace, serverless and the **Multiple Triggers** preview enabled (Previews page).
-# MAGIC **Data:** synthetic, a few rows. Import the whole folder: `zadanie/` holds the notebook the job runs.
+# MAGIC **Data:** synthetic, a few rows. Import the whole folder: `task/` holds the notebook the job runs.
 
 # COMMAND ----------
 
@@ -25,7 +25,7 @@ spark.sql(f"USE SCHEMA {schema}")
 
 api = WorkspaceClient().api_client
 here = dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().get()
-TASK_NB = os.path.dirname(here) + "/zadanie/zapisz_trigger"
+TASK_NB = os.path.dirname(here) + "/task/log_trigger"
 LANDING = f"/Volumes/{catalog}/{schema}/landing/orders/"
 
 # COMMAND ----------
@@ -36,9 +36,9 @@ LANDING = f"/Volumes/{catalog}/{schema}/landing/orders/"
 
 # COMMAND ----------
 
-spark.sql("CREATE OR REPLACE TABLE zrodlo_zamowienia (id INT, kraj STRING, kwota DECIMAL(10,2))")
-spark.sql("INSERT INTO zrodlo_zamowienia VALUES (1, 'PL', 120.00), (2, 'DE', 200.00), (3, 'CZ', 45.00)")
-spark.sql("CREATE OR REPLACE TABLE log_uruchomien (ts TIMESTAMP, trigger_type STRING)")
+spark.sql("CREATE OR REPLACE TABLE source_orders (id INT, country STRING, amount DECIMAL(10,2))")
+spark.sql("INSERT INTO source_orders VALUES (1, 'PL', 120.00), (2, 'DE', 200.00), (3, 'CZ', 45.00)")
+spark.sql("CREATE OR REPLACE TABLE trigger_log (ts TIMESTAMP, trigger_type STRING)")
 spark.sql("CREATE VOLUME IF NOT EXISTS landing")
 dbutils.fs.mkdirs(LANDING)
 
@@ -46,22 +46,22 @@ dbutils.fs.mkdirs(LANDING)
 
 # MAGIC %md
 # MAGIC ## Step 1: a job with a `triggers` array
-# MAGIC Requires a full (Premium) workspace. The task writes the `{{job.trigger.type}}` value to `log_uruchomien`.
+# MAGIC Requires a full (Premium) workspace. The task writes the `{{job.trigger.type}}` value to `trigger_log`.
 
 # COMMAND ----------
 
 job = {
-    "name": "news134_wiele_triggerow",
+    "name": "news134_multiple_triggers",
     "tasks": [{
-        "task_key": "zapisz_trigger",
+        "task_key": "log_trigger",
         "notebook_task": {
             "notebook_path": TASK_NB,
-            "base_parameters": {"log_table": f"{catalog}.{schema}.log_uruchomien",
+            "base_parameters": {"log_table": f"{catalog}.{schema}.trigger_log",
                                 "trigger_type": "{{job.trigger.type}}"},
         },
     }],
     "triggers": [
-        {"table_update": {"table_names": [f"{catalog}.{schema}.zrodlo_zamowienia"]}},
+        {"table_update": {"table_names": [f"{catalog}.{schema}.source_orders"]}},
         {"file_arrival": {"url": LANDING}},
         {"schedule": {"quartz_cron_expression": "0 0 6 * * ?", "timezone_id": "Europe/Warsaw"},
          "pause_status": "PAUSED"},
@@ -101,7 +101,7 @@ def wait_for_run(trigger, od_ms):
 
 time.sleep(90)
 od = int(time.time() * 1000)
-spark.sql("INSERT INTO zrodlo_zamowienia VALUES (4, 'PL', 10.00), (5, 'CZ', 20.00)")
+spark.sql("INSERT INTO source_orders VALUES (4, 'PL', 10.00), (5, 'CZ', 20.00)")
 run = wait_for_run("TABLE", od)
 print(json.dumps(run["trigger_info"], indent=2))
 
@@ -114,14 +114,14 @@ print(json.dumps(run["trigger_info"], indent=2))
 # COMMAND ----------
 
 od = int(time.time() * 1000)
-dbutils.fs.put(LANDING + "zamowienia_1.json", '{"id": 6, "kraj": "PL", "kwota": 5.0}', True)
+dbutils.fs.put(LANDING + "orders_1.json", '{"id": 6, "country": "PL", "amount": 5.0}', True)
 run = wait_for_run("FILE_ARRIVAL", od)
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- what the task got in {{job.trigger.type}}
-# MAGIC SELECT * FROM log_uruchomien ORDER BY ts
+# MAGIC SELECT * FROM trigger_log ORDER BY ts
 
 # COMMAND ----------
 
@@ -162,7 +162,7 @@ except Exception as e:
 # COMMAND ----------
 
 api.do("POST", "/api/2.2/jobs/delete", body={"job_id": job_id})
-spark.sql("DROP TABLE IF EXISTS zrodlo_zamowienia")
-spark.sql("DROP TABLE IF EXISTS log_uruchomien")
+spark.sql("DROP TABLE IF EXISTS source_orders")
+spark.sql("DROP TABLE IF EXISTS trigger_log")
 spark.sql("DROP VOLUME IF EXISTS landing")
 print("cleaned up")

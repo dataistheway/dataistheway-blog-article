@@ -31,8 +31,8 @@ me = w.current_user.me()
 here = dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().get()
 PIPE_DIR = os.path.dirname(here) + "/pipeline"
 
-spark.sql("CREATE OR REPLACE TABLE zrodlo_zamowienia (id INT, kraj STRING, kwota DECIMAL(10,2))")
-spark.sql("""INSERT INTO zrodlo_zamowienia VALUES
+spark.sql("CREATE OR REPLACE TABLE source_orders (id INT, country STRING, amount DECIMAL(10,2))")
+spark.sql("""INSERT INTO source_orders VALUES
   (1, 'PL', 120.00), (2, 'PL', 80.50), (3, 'DE', 200.00), (4, 'CZ', 45.00), (5, 'DE', 99.90)""")
 
 # COMMAND ----------
@@ -79,7 +79,7 @@ pipeline = {
     "catalog": catalog,
     "schema": schema,
     "serverless": True,
-    "libraries": [{"file": {"path": PIPE_DIR + "/mv_suma_kraj.sql"}}],
+    "libraries": [{"file": {"path": PIPE_DIR + "/mv_total_by_country.sql"}}],
     "run_as": {"group_name": GROUP},
 }
 pid = api.do("POST", "/api/2.0/pipelines", body=pipeline)["pipeline_id"]
@@ -107,7 +107,7 @@ print("update as the group:", run_update())
 # MAGIC %sql
 # MAGIC SELECT table_name, table_type, table_owner
 # MAGIC FROM information_schema.tables
-# MAGIC WHERE table_schema = current_schema() AND table_name IN ('mv_suma_kraj', 'zrodlo_zamowienia')
+# MAGIC WHERE table_schema = current_schema() AND table_name IN ('mv_total_by_country', 'source_orders')
 
 # COMMAND ----------
 
@@ -147,7 +147,7 @@ print("run_as_user_name:", api.do("GET", f"/api/2.0/pipelines/{pid}")["run_as_us
 # MAGIC -- owner right after the settings change, without a new update
 # MAGIC SELECT table_name, table_owner
 # MAGIC FROM information_schema.tables
-# MAGIC WHERE table_schema = current_schema() AND table_name = 'mv_suma_kraj'
+# MAGIC WHERE table_schema = current_schema() AND table_name = 'mv_total_by_country'
 
 # COMMAND ----------
 
@@ -158,7 +158,7 @@ print("run_as_user_name:", api.do("GET", f"/api/2.0/pipelines/{pid}")["run_as_us
 # COMMAND ----------
 
 try:
-    spark.sql(f"ALTER MATERIALIZED VIEW mv_suma_kraj SET OWNER TO `{GROUP}`")
+    spark.sql(f"ALTER MATERIALIZED VIEW mv_total_by_country SET OWNER TO `{GROUP}`")
     print("accepted")
 except Exception as e:
     print(str(e).splitlines()[0])
@@ -171,7 +171,7 @@ except Exception as e:
 # COMMAND ----------
 
 api.do("DELETE", f"/api/2.0/pipelines/{pid}", query={"cascade": "true"})
-spark.sql("DROP TABLE IF EXISTS zrodlo_zamowienia")
+spark.sql("DROP TABLE IF EXISTS source_orders")
 spark.sql(f"REVOKE ALL PRIVILEGES ON SCHEMA {catalog}.{schema} FROM `{GROUP}`")
 spark.sql(f"REVOKE USE CATALOG ON CATALOG {catalog} FROM `{GROUP}`")
 api.do("DELETE", f"/api/2.0/account/scim/v2/Groups/{gid}")

@@ -2,7 +2,7 @@
 
 Code for the article https://dataistheway.blog/en/lakeflow-pipeline-run-as-group/.
 
-Creates an account group and a serverless pipeline with `run_as.group_name`, then checks who owns the published table and what happens when run-as changes. `pipeline/mv_suma_kraj.sql` is the pipeline code (one materialized view).
+Creates an account group and a serverless pipeline with `run_as.group_name`, then checks who owns the published table and what happens when run-as changes. `pipeline/mv_total_by_country.sql` is the pipeline code (one materialized view).
 
 **Runs on:** a full (Premium) workspace with Unity Catalog and serverless; run it as a workspace admin, because it creates an account group.
 

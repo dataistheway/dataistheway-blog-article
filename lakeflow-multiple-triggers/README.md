@@ -2,7 +2,7 @@
 
 Code for the article https://dataistheway.blog/en/lakeflow-multiple-triggers/.
 
-Creates a job with three triggers through the Jobs REST API (table update, file arrival and a paused schedule as a backup) and shows which trigger started each run. `zadanie/zapisz_trigger.py` is the notebook the job runs: it logs `{{job.trigger.type}}` to a table.
+Creates a job with three triggers through the Jobs REST API (table update, file arrival and a paused schedule as a backup) and shows which trigger started each run. `task/log_trigger.py` is the notebook the job runs: it logs `{{job.trigger.type}}` to a table.
 
 **Runs on:** a full (Premium) workspace with serverless and the **Multiple Triggers** preview enabled (workspace Previews page).
 
@@ -26,4 +26,4 @@ Creates a job with three triggers through the Jobs REST API (table update, file 
 
 ## Notes
 
-Import the whole folder (the notebook and `zadanie/`), because the job runs `zadanie/zapisz_trigger` from the path next to the notebook. Step 3 waits 90 s before the insert, so the run takes about 4 minutes.
+Import the whole folder (the notebook and `task/`), because the job runs `task/log_trigger` from the path next to the notebook. Step 3 waits 90 s before the insert, so the run takes about 4 minutes.
