@@ -9,7 +9,7 @@
 # MAGIC
 # MAGIC **Names:** tables are `<catalog>.<schema>.skew_facts` / `skew_dim` (defaults: `workspace.dataistheway`).
 # MAGIC
-# MAGIC After each cell with a join, open the query profile (serverless) or Spark UI → Stages (classic cluster).
+# MAGIC After each cell with a join, open Spark UI → Stages (classic cluster). On serverless the query profile has no per-task view, so we check the key distribution with a query.
 
 # COMMAND ----------
 

@@ -32,7 +32,7 @@ LANDING = f"/Volumes/{catalog}/{schema}/landing/orders/"
 
 # MAGIC %md
 # MAGIC ## Step 0: source table, log table and a volume for files
-# MAGIC Works on Free Edition.
+# MAGIC Works on Free Edition. The job will watch `source_orders` and the `landing` volume, and its task logs every run to `trigger_log`.
 
 # COMMAND ----------
 
@@ -46,7 +46,7 @@ dbutils.fs.mkdirs(LANDING)
 
 # MAGIC %md
 # MAGIC ## Step 1: a job with a `triggers` array
-# MAGIC Requires a full (Premium) workspace. The task writes the `{{job.trigger.type}}` value to `trigger_log`.
+# MAGIC Requires a full (Premium) workspace. One job, three triggers: a table update, a file arrival and a paused schedule as a backup. The task writes the `{{job.trigger.type}}` value to `trigger_log`.
 
 # COMMAND ----------
 
@@ -74,7 +74,7 @@ print("job created")
 
 # MAGIC %md
 # MAGIC ## Step 2: what the server stored
-# MAGIC Requires a full (Premium) workspace.
+# MAGIC Requires a full (Premium) workspace. We read the job back to see how the server stored the `triggers` array.
 
 # COMMAND ----------
 
@@ -109,7 +109,7 @@ print(json.dumps(run["trigger_info"], indent=2))
 
 # MAGIC %md
 # MAGIC ## Step 4: a new file in the volume starts the same job
-# MAGIC Requires a full (Premium) workspace.
+# MAGIC Requires a full (Premium) workspace. A file dropped into the `landing` volume fires the second trigger of the same job.
 
 # COMMAND ----------
 
@@ -127,7 +127,7 @@ run = wait_for_run("FILE_ARRIVAL", od)
 
 # MAGIC %md
 # MAGIC ## Step 5: "just resume the schedule"
-# MAGIC Requires a full (Premium) workspace. We send `triggers` with one element and count how many triggers are left.
+# MAGIC Requires a full (Premium) workspace. It looks like resuming one trigger, but `jobs/update` replaces the whole array. We send `triggers` with one element and count how many triggers are left.
 
 # COMMAND ----------
 
@@ -143,7 +143,7 @@ print(json.dumps(triggers, indent=2))
 
 # MAGIC %md
 # MAGIC ## Step 6: legacy `schedule` on a job with `triggers`
-# MAGIC Requires a full (Premium) workspace. The cell prints the error.
+# MAGIC Requires a full (Premium) workspace. Can a job with a `triggers` array still take the old `schedule` field? The cell prints the error.
 
 # COMMAND ----------
 
@@ -158,6 +158,7 @@ except Exception as e:
 
 # MAGIC %md
 # MAGIC ## Cleanup
+# MAGIC Delete the job, the tables and the volume.
 
 # COMMAND ----------
 

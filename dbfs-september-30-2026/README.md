@@ -11,7 +11,7 @@ Shows the Unity Catalog volume as the replacement for DBFS root and mounts: crea
 1. Import `dbfs_volumes.py` into your workspace (**Workspace → Import → File**).
 2. Attach it to Serverless compute.
 3. Set the widgets (`catalog`, `schema`, ...). The schema is created if it does not exist.
-4. Run all cells. The last cell removes everything the notebook created.
+4. Run all cells. The last cell drops the volume (the schema stays).
 
 ## What each step does
 

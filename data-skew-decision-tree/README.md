@@ -24,4 +24,4 @@ Generates 2 million synthetic fact rows where about 90% share one customer key a
 
 ## Notes
 
-After each join cell, open the query profile (serverless) or Spark UI → Stages to see how the work is spread across tasks.
+After each join cell, open Spark UI → Stages on a classic cluster to see how the work is spread across tasks. On serverless the query profile shows per-operator metrics only, so the notebook checks the key distribution with a query instead.

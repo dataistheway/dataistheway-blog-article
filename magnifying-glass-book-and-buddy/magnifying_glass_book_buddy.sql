@@ -6,7 +6,7 @@
 -- MAGIC
 -- MAGIC **Data:** synthetic, generated in the notebook (12 short articles about coffee: IDs 1-4 are texts for a professional barista, the rest is noise). No RetailHub files needed. The articles and the search patterns are in Polish on purpose: the article shows how Polish inflection weakens LIKE and regex, and the expected results depend on the Polish word forms.
 -- MAGIC
--- MAGIC **Full-text:** Databricks SQL has no equivalent of `CONTAINSTABLE`/`FREETEXTTABLE`. The T-SQL version is in the file `sql_server_like_regex_fts.sql` next to this one.
+-- MAGIC **Full-text:** Databricks SQL has no equivalent of `FREETEXTTABLE` (inflection, ranking); `CREATE SEARCH INDEX` (Beta) only matches substrings or whole words. The T-SQL version is in the file `sql_server_like_regex_fts.sql` next to this one.
 -- MAGIC
 -- MAGIC **Compute:** Serverless or a SQL Warehouse. Works on Free Edition.
 

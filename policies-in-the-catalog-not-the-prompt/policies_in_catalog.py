@@ -100,7 +100,7 @@ display(spark.sql("SELECT state, COUNT(*) AS customers FROM gold_customer_360 GR
 # MAGIC ## Instructions in Genie (the prompt layer)
 # MAGIC Works on Free Edition (the Instructions field in Genie Agent)
 # MAGIC
-# MAGIC This is not code to run. Paste it into the **Instructions** of a Genie space on the table `gold_customer_360`:
+# MAGIC This is not code to run. Paste it into the **General instructions** of a Genie Agent (formerly Genie space) on the table `gold_customer_360`:
 # MAGIC
 # MAGIC ```text
 # MAGIC tax_id and customer_name are PII, do not show their values.

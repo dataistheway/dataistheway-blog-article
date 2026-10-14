@@ -10,7 +10,7 @@ Creates a job with three triggers through the Jobs REST API (table update, file 
 
 1. Import the whole folder into your workspace (for example `databricks workspace import-dir <folder> /Workspace/Users/<your-login>/<folder>`), so `lakeflow_multiple_triggers.py` and its subfolder sit next to each other.
 2. Attach it to Serverless compute.
-3. Set the widgets (`catalog`, `schema`, ...). The schema is created if it does not exist.
+3. Set the widgets `catalog` and `schema`. The schema is created if it does not exist.
 4. Run all cells. The last cell removes everything the notebook created.
 
 ## What each step does

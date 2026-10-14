@@ -11,7 +11,7 @@ The article is an opinion piece with two code blocks; the notebook runs both on 
 1. Import `sql_mutating.py` into your workspace (**Workspace → Import → File**).
 2. Attach it to Serverless compute.
 3. Set the widgets (`catalog`, `schema`, ...). The schema is created if it does not exist.
-4. Run all cells. The last cell removes everything the notebook created.
+4. Run all cells. The last cell drops the `employees` table. The schema stays.
 
 ## What each step does
 
