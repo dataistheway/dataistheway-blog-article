@@ -13,6 +13,8 @@ Builds a synthetic `gold_customer_360` table (400 customers) and moves access ru
 3. Set the widgets (`catalog`, `schema`, ...). The schema is created if it does not exist.
 4. Run all cells. The last cell removes everything the notebook created.
 
+Run it in a dedicated schema: the notebook replaces, filters and drops `gold_customer_360`, so never point it at a schema with a real table of that name.
+
 ## What each step does
 
 - **Data preparation:** the synthetic customer table.

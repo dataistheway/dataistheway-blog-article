@@ -12,6 +12,7 @@ Creates three small serverless pipelines through the Pipelines REST API and dele
 2. Attach it to Serverless compute.
 3. Set the widgets `catalog` and `schema`. The schema is created if it does not exist.
 4. Run all cells. The last cell removes the job, the pipelines, the tables, the volume and the pipeline source files. The schema, the parent `dataistheway` folder and internal `__materialization_mat_*` tables may stay; drop them yourself if needed.
+5. If a run stops halfway, clean up before you start again, because the pipeline, job, table and volume names must be free. The Cleanup cell needs `job_id` and `pid_c` from earlier steps, so delete the leftover `news104_*` pipelines with `databricks pipelines delete <id> --cascade` and the `news104_continuous` job by hand, then run the `DROP` statements and the workspace delete from the Cleanup cell.
 
 ## What each step does
 

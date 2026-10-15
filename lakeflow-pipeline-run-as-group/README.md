@@ -6,6 +6,8 @@ Creates an account group and a serverless pipeline with `run_as.group_name`, the
 
 **Runs on:** a full (Premium) workspace with Unity Catalog and serverless; run it as a workspace admin, because it creates an account group.
 
+Run it only in a sandbox account or workspace. The notebook creates and deletes an account-level group, which is visible in every workspace of the account. Pick a unique `group_name`.
+
 ## How to run
 
 1. Import the whole folder into your workspace (for example `databricks workspace import-dir <folder> /Workspace/Users/<your-login>/<folder>`), so `pipeline_run_as_group.py` and its subfolder sit next to each other.

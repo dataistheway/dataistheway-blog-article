@@ -27,3 +27,5 @@ Creates a job with three triggers through the Jobs REST API (table update, file 
 ## Notes
 
 Import the whole folder (the notebook and `task/`), because the job runs `task/log_trigger` from the path next to the notebook. Step 3 waits 90 s before the insert, so the run takes about 4 minutes.
+
+If the notebook stops before the last cell, delete the `news134_multiple_triggers` job by hand: it keeps active triggers (table update and file arrival until step 5, and after step 5 only an unpaused daily schedule).

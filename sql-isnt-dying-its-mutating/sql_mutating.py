@@ -68,11 +68,11 @@ spark.sql(f"USE SCHEMA {schema}")
 
 # MAGIC %md
 # MAGIC ## Step 2: semantic search as a function in `FROM`
-# MAGIC Works on Free Edition (requires an AI Search endpoint and index; Free Edition is limited to one endpoint)
+# MAGIC Should work on Free Edition, not run in the lab (Public Preview, not on classic SQL warehouses; needs a Delta Sync index with managed embeddings and `SELECT` on it; Free Edition has one AI Search endpoint)
 # MAGIC
 # MAGIC To prepare: an AI Search endpoint and an index with managed embeddings on a table with text
 # MAGIC (for example, short coffee tips). Put the full index name in the `vs_index` widget and set `RUN_VECTOR_SEARCH = true`.
-# MAGIC Check the argument names (`query_text`) in the documentation on the day you run it.
+# MAGIC Arguments as in the `vector_search()` docs (Public Preview, DBR 15.3+, not on classic SQL warehouses).
 
 # COMMAND ----------
 

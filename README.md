@@ -16,7 +16,7 @@ Runnable code for the articles on [dataistheway.blog](https://dataistheway.blog/
 | [data-skew-decision-tree](data-skew-decision-tree/) | [Data skew in Spark: a decision tree](https://dataistheway.blog/en/data-skew-decision-tree/) | Free Edition |
 | [lakeflow-multiple-triggers](lakeflow-multiple-triggers/) | [Lakeflow Jobs: multiple triggers on one job](https://dataistheway.blog/en/lakeflow-multiple-triggers/) | Premium, Multiple Triggers preview |
 | [lakeflow-pipeline-run-as-group](lakeflow-pipeline-run-as-group/) | [Lakeflow: a pipeline that doesn't belong to one person](https://dataistheway.blog/en/lakeflow-pipeline-run-as-group/) | Premium, workspace admin |
-| [lakeflow-september-2026](lakeflow-september-2026/) | [Lakeflow in September 2026: deleting a pipeline no longer drops its tables](https://dataistheway.blog/en/lakeflow-september-2026-changes/) | Premium |
+| [lakeflow-september-2026](lakeflow-september-2026/) | [Lakeflow, September 2026: deleting a pipeline keeps its tables](https://dataistheway.blog/en/lakeflow-september-2026-changes/) | Premium |
 
 ## How to run a notebook
 
