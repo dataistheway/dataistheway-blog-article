@@ -24,6 +24,8 @@ Builds a small agent on synthetic customer data and shows the layers that stop d
 - **Step 7 (Premium):** audit of who called the function.
 - **Cleanup:** drops everything the notebook created.
 
+The notebook numbers its steps differently from the article: article step 4 (agent identity) is Step 6 here, article step 6 (audit) is Step 7, and the function (Step 2) runs before the attacks (Step 1). There is no Step 4.
+
 ## Notes
 
 Agent answers come from an LLM (`databricks-meta-llama-3-3-70b-instruct`), so they can differ slightly between runs.
