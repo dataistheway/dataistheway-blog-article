@@ -4,15 +4,15 @@
 # MAGIC
 # MAGIC Code for the article https://dataistheway.blog/en/six-layers-of-agent-defence/.
 # MAGIC
-# MAGIC - **Works on Free Edition:** steps 1-5 (synthetic data, PII-free function, agent built with `create_agent`, four attacks, mask, indirect attack).
+# MAGIC - **Free Edition:** not checked. Steps 1 and 5 call the model through Unity Gateway (`use_ai_gateway=True`); the Free Edition limits page does not say whether Unity Gateway is there. Steps 0, 2 and 3 use only Unity Catalog.
 # MAGIC - **Requires a full (Premium) workspace:** step 6 (grants for the service principal) and step 7 (`system.access.audit`). Both sit behind the `RUN_PREMIUM` flag.
 # MAGIC - Data: synthetic, generated in the notebook (20 customers, fictitious `tax_id`). No input files needed.
 # MAGIC - The poisoned review in step 5 **lives only in memory**. We do not write it to any table, because other indexes and agents may use the same data.
-# MAGIC - Model: `databricks-meta-llama-3-3-70b-instruct` (available on Free Edition).
+# MAGIC - Model: `system.ai.meta-llama-3-3-70b-instruct`, a Unity Gateway model service (`ChatDatabricks(model=..., use_ai_gateway=True)`).
 
 # COMMAND ----------
 
-# MAGIC %pip install --quiet -U databricks-langchain "langchain==1.4.3" langgraph "unitycatalog-ai[databricks]" "mcp>=1.20,<2" "langgraph==1.2.12"
+# MAGIC %pip install --quiet -U "databricks-langchain==0.21.0" "langchain==1.4.3" langgraph "unitycatalog-ai[databricks]" "mcp>=1.20,<2" "langgraph==1.2.12"
 
 # COMMAND ----------
 
@@ -22,13 +22,13 @@ dbutils.library.restartPython()
 
 dbutils.widgets.text("catalog", "workspace")
 dbutils.widgets.text("schema", "dataistheway")
-dbutils.widgets.text("llm_endpoint", "databricks-meta-llama-3-3-70b-instruct")
+dbutils.widgets.text("llm_model", "system.ai.meta-llama-3-3-70b-instruct")
 dbutils.widgets.dropdown("run_premium", "false", ["false", "true"])
 dbutils.widgets.text("agent_principal", "agent-sp")  # name / application_id of the agent's service principal (Premium only)
 
 CATALOG = dbutils.widgets.get("catalog")
 SCHEMA = dbutils.widgets.get("schema")
-LLM_ENDPOINT = dbutils.widgets.get("llm_endpoint")
+LLM_MODEL = dbutils.widgets.get("llm_model")
 RUN_PREMIUM = dbutils.widgets.get("run_premium") == "true"
 AGENT_PRINCIPAL = dbutils.widgets.get("agent_principal")
 
@@ -103,7 +103,7 @@ SYSTEM_PROMPT = (
     "You do not perform operations that change data."
 )
 tools = UCFunctionToolkit(function_names=[FN_PROFILE]).tools
-agent = create_agent(model=ChatDatabricks(endpoint=LLM_ENDPOINT, temperature=0.1),
+agent = create_agent(model=ChatDatabricks(model=LLM_MODEL, use_ai_gateway=True, temperature=0.1),
                      tools=tools, system_prompt=SYSTEM_PROMPT)
 
 ATTACKS = [
@@ -181,7 +181,7 @@ review_tool = StructuredTool.from_function(
 
 
 def run_variant(system_prompt: str) -> dict:
-    a = create_agent(model=ChatDatabricks(endpoint=LLM_ENDPOINT, temperature=0.0, max_tokens=400),
+    a = create_agent(model=ChatDatabricks(model=LLM_MODEL, use_ai_gateway=True, temperature=0.0, max_tokens=400),
                      tools=[review_tool], system_prompt=system_prompt)
     state = a.invoke({"messages": [{"role": "user", "content": QUESTION}]})
     answer = str(state["messages"][-1].content)

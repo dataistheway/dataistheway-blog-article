@@ -4,7 +4,7 @@ Code for the article https://dataistheway.blog/en/six-layers-of-agent-defence/.
 
 Builds a small agent on synthetic customer data and shows the layers that stop data leaks, none of which is "the model refused".
 
-**Runs on:** Free Edition for steps 1–5; steps 6–7 need a full (Premium) workspace (`run_premium = true` and the `agent_principal` widget).
+**Runs on:** recorded on a Premium workspace (Azure Databricks). Steps 6–7 need a full (Premium) workspace (`run_premium = true` and the `agent_principal` widget). Free Edition: not checked. Steps 1 and 5 call the model through Unity Gateway, and the Free Edition limits page does not say whether Unity Gateway is available there.
 
 ## How to run
 
@@ -28,6 +28,8 @@ The notebook numbers its steps differently from the article: article step 4 (age
 
 ## Notes
 
-Agent answers come from an LLM (`databricks-meta-llama-3-3-70b-instruct`), so they can differ slightly between runs.
+The agent calls the model `system.ai.meta-llama-3-3-70b-instruct` as a Unity Gateway model service: `ChatDatabricks(model=LLM_MODEL, use_ai_gateway=True)` with `databricks-langchain==0.21.0` (the `llm_model` widget). Agent answers come from an LLM, so they can differ slightly between runs.
 
-On a workspace with **Enforce Unity Gateway** on (per the [docs](https://learn.microsoft.com/azure/databricks/ai-gateway/migrate-to-unity-gateway), the default on new workspaces) the pay-per-token `databricks-*` endpoints return `PERMISSION_DENIED`. There, replace `endpoint=LLM_ENDPOINT` in both `ChatDatabricks(...)` calls with `model="system.ai.meta-llama-3-3-70b-instruct", use_ai_gateway=True` (tested on 2026-10-16 with `databricks-langchain` 0.21.0, on a workspace without enforcement). The notebook was run on a Premium workspace; whether Free Edition has enforcement on was not checked.
+This is the path for workspaces with **Enforce Unity Gateway** on (per the [docs](https://learn.microsoft.com/azure/databricks/ai-gateway/migrate-to-unity-gateway), the default on new workspaces), where the pay-per-token `databricks-*` endpoints return `PERMISSION_DENIED`. The recording comes from a workspace with enforcement off, so the enforced case was not tested.
+
+`langchain` and `langgraph` are pinned in the `%pip` cell: without the pins the install on serverless failed with `ResolutionTooDeep`.
