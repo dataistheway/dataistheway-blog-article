@@ -29,3 +29,5 @@ The notebook numbers its steps differently from the article: article step 4 (age
 ## Notes
 
 Agent answers come from an LLM (`databricks-meta-llama-3-3-70b-instruct`), so they can differ slightly between runs.
+
+On a workspace with **Enforce Unity Gateway** on (per the [docs](https://learn.microsoft.com/azure/databricks/ai-gateway/migrate-to-unity-gateway), the default on new workspaces) the pay-per-token `databricks-*` endpoints return `PERMISSION_DENIED`. There, replace `endpoint=LLM_ENDPOINT` in both `ChatDatabricks(...)` calls with `model="system.ai.meta-llama-3-3-70b-instruct", use_ai_gateway=True` (tested on 2026-10-16 with `databricks-langchain` 0.21.0, on a workspace without enforcement). The notebook was run on a Premium workspace; whether Free Edition has enforcement on was not checked.
