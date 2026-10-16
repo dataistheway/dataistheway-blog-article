@@ -18,6 +18,7 @@ Komentarze w kodzie są po angielsku, tak samo jak nazwy folderów. Artykuły cz
 | [data-skew-decision-tree](data-skew-decision-tree/) | [Data skew w Sparku: drzewko decyzyjne](https://dataistheway.blog/data-skew-drzewko-decyzyjne/) | Free Edition |
 | [lakeflow-multiple-triggers](lakeflow-multiple-triggers/) | [Lakeflow Jobs: kilka triggerów na jednym jobie](https://dataistheway.blog/lakeflow-wiele-triggerow/) | Premium, podgląd Multiple Triggers |
 | [lakeflow-pipeline-run-as-group](lakeflow-pipeline-run-as-group/) | [Lakeflow: pipeline, który nie należy do jednej osoby](https://dataistheway.blog/lakeflow-pipeline-run-as-grupa/) | Premium, admin workspace'u |
+| [genie-one-mcp](genie-one-mcp/) | [Genie One MCP: każdy agent pyta o dane, a uprawnienia zostają w Unity Catalog](https://dataistheway.blog/genie-one-mcp-polityki-w-katalogu/) | Premium (krok 1 na Free Edition) |
 | [lakeflow-september-2026](lakeflow-september-2026/) | [Lakeflow, wrzesień 2026: usunięcie pipeline'u zostawia tabele](https://dataistheway.blog/lakeflow-wrzesien-2026-zmiany/) | Premium |
 
 ## Jak uruchomić notebook

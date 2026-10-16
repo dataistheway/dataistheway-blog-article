@@ -16,6 +16,7 @@ Runnable code for the articles on [dataistheway.blog](https://dataistheway.blog/
 | [data-skew-decision-tree](data-skew-decision-tree/) | [Data skew in Spark: a decision tree](https://dataistheway.blog/en/data-skew-decision-tree/) | Free Edition |
 | [lakeflow-multiple-triggers](lakeflow-multiple-triggers/) | [Lakeflow Jobs: multiple triggers on one job](https://dataistheway.blog/en/lakeflow-multiple-triggers/) | Premium, Multiple Triggers preview |
 | [lakeflow-pipeline-run-as-group](lakeflow-pipeline-run-as-group/) | [Lakeflow: a pipeline that doesn't belong to one person](https://dataistheway.blog/en/lakeflow-pipeline-run-as-group/) | Premium, workspace admin |
+| [genie-one-mcp](genie-one-mcp/) | [Genie One MCP: any agent can ask about your data, and permissions stay in Unity Catalog](https://dataistheway.blog/en/genie-one-mcp/) | Premium (step 1 on Free Edition) |
 | [lakeflow-september-2026](lakeflow-september-2026/) | [Lakeflow, September 2026: deleting a pipeline keeps its tables](https://dataistheway.blog/en/lakeflow-september-2026-changes/) | Premium |
 
 ## How to run a notebook
