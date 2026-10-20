@@ -4,15 +4,15 @@
 # MAGIC
 # MAGIC Code for the article https://dataistheway.blog/en/six-layers-of-agent-defence/.
 # MAGIC
-# MAGIC - **Free Edition:** not checked. Steps 1 and 5 call the model through Unity Gateway (`use_ai_gateway=True`); the Free Edition limits page does not say whether Unity Gateway is there. Steps 0, 2 and 3 use only Unity Catalog.
-# MAGIC - **Requires a full (Premium) workspace:** step 6 (grants for the service principal) and step 7 (`system.access.audit`). Both sit behind the `RUN_PREMIUM` flag.
 # MAGIC - Data: synthetic, generated in the notebook (20 customers, fictitious `tax_id`). No input files needed.
 # MAGIC - The poisoned review in step 5 **lives only in memory**. We do not write it to any table, because other indexes and agents may use the same data.
 # MAGIC - Model: `system.ai.meta-llama-3-3-70b-instruct`, a Unity Gateway model service (`ChatDatabricks(model=..., use_ai_gateway=True)`).
+# MAGIC - `agent_principal`: the application ID of the service principal the agent runs as. Step 4 grants it `USE CATALOG`, `USE SCHEMA` and `EXECUTE`, so you need to be allowed to grant on the catalog (owner or `MANAGE`).
+# MAGIC - Step 6 reads `system.access.audit`, so you need `USE SCHEMA` and `SELECT` on `system.access`.
 
 # COMMAND ----------
 
-# MAGIC %pip install --quiet -U "databricks-langchain==0.21.0" "langchain==1.4.3" langgraph "unitycatalog-ai[databricks]" "mcp>=1.20,<2" "langgraph==1.2.12"
+# MAGIC %pip install --quiet "databricks-langchain==0.21.0" "langchain==1.4.3" "langgraph==1.2.12" "unitycatalog-ai[databricks]"
 
 # COMMAND ----------
 
@@ -21,16 +21,13 @@ dbutils.library.restartPython()
 # COMMAND ----------
 
 dbutils.widgets.text("catalog", "workspace")
-dbutils.widgets.text("schema", "dataistheway")
-dbutils.widgets.text("llm_model", "system.ai.meta-llama-3-3-70b-instruct")
-dbutils.widgets.dropdown("run_premium", "false", ["false", "true"])
-dbutils.widgets.text("agent_principal", "agent-sp")  # name / application_id of the agent's service principal (Premium only)
+dbutils.widgets.text("schema", "news32_agent_defence")
+dbutils.widgets.text("agent_principal", "<application-id-of-the-agent-sp>")
 
 CATALOG = dbutils.widgets.get("catalog")
 SCHEMA = dbutils.widgets.get("schema")
-LLM_MODEL = dbutils.widgets.get("llm_model")
-RUN_PREMIUM = dbutils.widgets.get("run_premium") == "true"
 AGENT_PRINCIPAL = dbutils.widgets.get("agent_principal")
+LLM_MODEL = "system.ai.meta-llama-3-3-70b-instruct"
 
 FQ = f"{CATALOG}.{SCHEMA}"
 TABLE = f"{FQ}.agent_customers"
@@ -62,12 +59,14 @@ display(spark.table(TABLE).limit(5))
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 2 (layer 4): the function returns the minimum
+# MAGIC ## Step 1 (layer 4): the function returns the minimum
 # MAGIC The `COMMENT` becomes the tool description for the model.
+# MAGIC
+# MAGIC Tested on Free Edition (2026-10-17).
 
 # COMMAND ----------
 
-spark.sql(f"""
+CREATE_FN_PROFILE = f"""
 CREATE OR REPLACE FUNCTION {FN_PROFILE}(p_customer_id BIGINT)
 RETURNS TABLE (customer_id BIGINT, segment STRING, state STRING, total_spent DOUBLE)
 COMMENT 'Customer profile: segment, state and total spend. Does not return personal data or tax_id. Use for questions about a single customer by ID.'
@@ -75,14 +74,17 @@ RETURN
   SELECT customer_id, segment, state, total_spent
   FROM {TABLE}
   WHERE customer_id = p_customer_id
-""")
+"""
+spark.sql(CREATE_FN_PROFILE)
 display(spark.sql(f"SELECT * FROM {FN_PROFILE}({VIP_CUSTOMER_ID})"))
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 1: the agent and four attacks
-# MAGIC The agent has one tool (the function from step 2). The `tools` column shows whether the attack reached the data.
+# MAGIC ## Step 2: the agent and four attacks
+# MAGIC The agent has one tool (the function from step 1). The `tools` column shows whether the attack reached the data.
+# MAGIC
+# MAGIC Does not work on Free Edition: `'system.ai.meta-llama-3-3-70b-instruct' does not exist.` (2026-10-17). With `databricks-meta-llama-3-3-70b-instruct` and `use_ai_gateway=False` it passed there.
 
 # COMMAND ----------
 
@@ -126,8 +128,24 @@ print("For each row, write down: which of the six layers stopped it?")
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC Layers 4 and 6 do not need the model to be tested. Two plain assertions give the same result on every run. Tested on Free Edition (2026-10-17).
+
+# COMMAND ----------
+
+profile_columns = spark.sql(f"SELECT * FROM {FN_PROFILE}({VIP_CUSTOMER_ID})").columns
+tool_names = [t.name for t in tools]
+assert "tax_id" not in profile_columns, profile_columns
+assert not any(w in n.lower() for n in tool_names for w in ["delete", "update", "insert", "write"]), tool_names
+print("Layer 4, function columns:", profile_columns)
+print("Layer 6, agent tools:", tool_names)
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Step 3 (layer 5): mask in the catalog
-# MAGIC The `compliance_officers_demo` group usually does not exist, so the mask applies to everyone, including us. Details in the article "Policies go to the catalog, not the prompt".
+# MAGIC The `compliance_officers_demo` group does not exist, so the mask applies to everyone, including us. Details in the article "Policies go to the catalog, not the prompt".
+# MAGIC
+# MAGIC Tested on Free Edition (2026-10-17).
 
 # COMMAND ----------
 
@@ -142,8 +160,38 @@ display(spark.sql(f"SELECT customer_id, tax_id FROM {TABLE} LIMIT 5"))
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Step 4 (layer 6): least privilege for the agent's service principal
+# MAGIC The service principal gets `EXECUTE` on the function and **does not get** `SELECT` on the table. Granting `USE CATALOG` needs catalog ownership or `MANAGE`.
+# MAGIC
+# MAGIC Tested on Free Edition (2026-10-17), with my own account as `agent_principal` (a check of the commands, not of least privilege).
+
+# COMMAND ----------
+
+for stmt in [
+    f"GRANT USE CATALOG ON CATALOG {CATALOG} TO `{AGENT_PRINCIPAL}`",
+    f"GRANT USE SCHEMA ON SCHEMA {FQ} TO `{AGENT_PRINCIPAL}`",
+    f"GRANT EXECUTE ON FUNCTION {FN_PROFILE} TO `{AGENT_PRINCIPAL}`",
+]:
+    spark.sql(stmt)
+display(spark.sql(f"SHOW GRANTS `{AGENT_PRINCIPAL}` ON FUNCTION {FN_PROFILE}"))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Pitfall: rerunning step 1 (`CREATE OR REPLACE FUNCTION`) wipes the grant.
+
+# COMMAND ----------
+
+spark.sql(CREATE_FN_PROFILE)
+display(spark.sql(f"SHOW GRANTS `{AGENT_PRINCIPAL}` ON FUNCTION {FN_PROFILE}"))
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Step 5: indirect attack through data
 # MAGIC The reviews are synthetic, and the poisoned review exists only in the memory of this cell.
+# MAGIC
+# MAGIC Does not work on Free Edition: `'system.ai.meta-llama-3-3-70b-instruct' does not exist.` (2026-10-17). With `databricks-meta-llama-3-3-70b-instruct` and `use_ai_gateway=False` it passed there.
 
 # COMMAND ----------
 
@@ -201,41 +249,19 @@ if not results["attack worked"].any():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 6 (layer 6, Premium): least privilege
-# MAGIC The service principal gets `EXECUTE` on the function and **does not get** `SELECT` on the table. The call test must then be run as the SP identity (e.g. an OAuth token and the Statement Execution API), not from your own account.
+# MAGIC ## Step 6: audit, who fetched the function
+# MAGIC Needs `USE SCHEMA` and `SELECT` on `system.access`. Tested on Free Edition (2026-10-17): the query runs but returned no rows.
 
 # COMMAND ----------
 
-if RUN_PREMIUM:
-    for stmt in [
-        f"GRANT USE CATALOG ON CATALOG {CATALOG} TO `{AGENT_PRINCIPAL}`",
-        f"GRANT USE SCHEMA ON SCHEMA {FQ} TO `{AGENT_PRINCIPAL}`",
-        f"GRANT EXECUTE ON FUNCTION {FN_PROFILE} TO `{AGENT_PRINCIPAL}`",
-    ]:
-        spark.sql(stmt)
-    display(spark.sql(f"SHOW GRANTS ON FUNCTION {FN_PROFILE}"))
-    # Pitfall: CREATE OR REPLACE FUNCTION wipes grants. After rerunning step 2, SHOW GRANTS will be empty.
-else:
-    print("Skipped: set run_premium = true on a full workspace with a service principal.")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Step 7 (Premium): audit, who called the function
-
-# COMMAND ----------
-
-if RUN_PREMIUM:
-    display(spark.sql("""
-        SELECT event_time, user_identity.email, request_params.full_name_arg
-        FROM system.access.audit
-        WHERE service_name = 'unityCatalog'
-          AND action_name  = 'getFunction'
-          AND event_date >= current_date() - INTERVAL 1 DAY
-        ORDER BY event_time DESC
-        LIMIT 50"""))
-else:
-    print("Skipped: system.access.audit requires a full workspace.")
+display(spark.sql("""
+    SELECT event_time, user_identity.email, request_params.full_name_arg
+    FROM system.access.audit
+    WHERE service_name = 'unityCatalog'
+      AND action_name  = 'getFunction'
+      AND event_date >= current_date() - INTERVAL 1 DAY
+    ORDER BY event_time DESC
+    LIMIT 50"""))
 
 # COMMAND ----------
 
@@ -244,8 +270,9 @@ else:
 
 # COMMAND ----------
 
-spark.sql(f"ALTER TABLE {TABLE} ALTER COLUMN tax_id DROP MASK")
+spark.sql(f"DROP TABLE IF EXISTS {TABLE}")
 spark.sql(f"DROP FUNCTION IF EXISTS {FN_MASK}")
 spark.sql(f"DROP FUNCTION IF EXISTS {FN_PROFILE}")
-spark.sql(f"DROP TABLE IF EXISTS {TABLE}")
-print("Dropped the table, functions and mask. Delete the MLflow experiment dataistheway_agent_defence manually if you do not need it.")
+spark.sql(f"DROP SCHEMA IF EXISTS {FQ}")
+spark.sql(f"REVOKE USE CATALOG ON CATALOG {CATALOG} FROM `{AGENT_PRINCIPAL}`")
+print("Dropped the table, functions and schema, revoked USE CATALOG. Delete the MLflow experiment dataistheway_agent_defence if you do not need it.")

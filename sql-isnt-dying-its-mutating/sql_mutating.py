@@ -4,29 +4,21 @@
 # MAGIC
 # MAGIC Code for the article https://dataistheway.blog/en/sql-isnt-dying-its-mutating/.
 # MAGIC
-# MAGIC The notebook follows the order of the article. The article is an opinion piece
-# MAGIC with only two code blocks: a declarative `SELECT` and `vector_search()`.
+# MAGIC Two examples from the article: a declarative `SELECT` and semantic search with `vector_search()`.
 # MAGIC
-# MAGIC **Input:** synthetic data generated in the notebook (table `employees`, a few rows, no personal data).
-# MAGIC Step 2 requires an existing AI Search index (formerly Vector Search) with managed embeddings.
-# MAGIC
-# MAGIC **Name mapping** (article -> notebook):
-# MAGIC - `employees` -> `employees` in `<catalog>.<schema>`
-# MAGIC - `<your_catalog>.<schema>.<index>` -> widget `vs_index` (empty = `<catalog>.<schema>.coffee_index`)
-# MAGIC
-# MAGIC **Switch:** `RUN_VECTOR_SEARCH` (default `false`).
+# MAGIC **Input:** synthetic data generated in the notebook (tables `employees` and `coffee_tips`, no personal data).
+# MAGIC The notebook creates an AI Search (formerly Vector Search) endpoint and an index, and deletes them at the end.
+# MAGIC The endpoint is billed for as long as it runs.
 
 # COMMAND ----------
 
 dbutils.widgets.text("catalog", "workspace")
 dbutils.widgets.text("schema", "dataistheway")
-dbutils.widgets.text("vs_index", "")
-dbutils.widgets.dropdown("RUN_VECTOR_SEARCH", "false", ["true", "false"])
 
 catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
-vs_index = dbutils.widgets.get("vs_index") or f"{catalog}.{schema}.coffee_index"
-RUN_VECTOR_SEARCH = dbutils.widgets.get("RUN_VECTOR_SEARCH") == "true"
+ENDPOINT = "sql_mutating_search"
+INDEX = f"{catalog}.{schema}.coffee_tips_index"
 
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog}.{schema}")
 spark.sql(f"USE CATALOG {catalog}")
@@ -54,7 +46,7 @@ spark.sql(f"USE SCHEMA {schema}")
 
 # MAGIC %md
 # MAGIC ## Step 1: we say "what", not "how"
-# MAGIC Works on Free Edition (on any table with columns `name` and `salary`)
+# MAGIC Only employees earning more than 5000, highest salary first. Plain SQL, no AI Search needed.
 
 # COMMAND ----------
 
@@ -67,33 +59,89 @@ spark.sql(f"USE SCHEMA {schema}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 2: semantic search as a function in `FROM`
-# MAGIC Should work on Free Edition, not run in the lab (Public Preview, not on classic SQL warehouses; needs a Delta Sync index with managed embeddings and `SELECT` on it; Free Edition has one AI Search endpoint)
-# MAGIC
-# MAGIC To prepare: an AI Search endpoint and an index with managed embeddings on a table with text
-# MAGIC (for example, short coffee tips). Put the full index name in the `vs_index` widget and set `RUN_VECTOR_SEARCH = true`.
-# MAGIC Arguments as in the `vector_search()` docs (Public Preview, DBR 15.3+, not on classic SQL warehouses).
+# MAGIC ## Data preparation for step 2
+# MAGIC Eight short tips. Note that few of them contain the words "brew" or "properly".
+# MAGIC Change Data Feed is required by a Delta Sync index.
 
 # COMMAND ----------
 
-if RUN_VECTOR_SEARCH:
-    display(spark.sql(f"""
-    SELECT *
-    FROM vector_search(
-      index => '{vs_index}',
-      query_text => 'how to brew coffee properly',
-      num_results => 3
-    )
-    """))
-else:
-    print("Skipped: RUN_VECTOR_SEARCH = false")
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TABLE coffee_tips (id INT NOT NULL, tip STRING)
+# MAGIC TBLPROPERTIES (delta.enableChangeDataFeed = true);
+# MAGIC
+# MAGIC INSERT INTO coffee_tips VALUES
+# MAGIC   (1, 'Grind the beans just before making an espresso, not the day before.'),
+# MAGIC   (2, 'For a pour-over, use water at 92-96 degrees, not straight off the boil.'),
+# MAGIC   (3, 'A French press needs a coarse grind and about four minutes of steeping.'),
+# MAGIC   (4, 'Green tea tastes bitter if the water is hotter than 80 degrees.'),
+# MAGIC   (5, 'Descale the kettle once a month if you have hard water.'),
+# MAGIC   (6, 'Keep coffee beans in an airtight container, away from light.'),
+# MAGIC   (7, 'Froth milk for a cappuccino to about 60 degrees.'),
+# MAGIC   (8, 'Weigh the coffee: about 60 grams per litre of water is a good start.');
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## AI Search endpoint and index
+# MAGIC A Delta Sync index with managed embeddings: Databricks computes the vectors with `databricks-gte-large-en`.
+# MAGIC Creating the endpoint takes a few minutes.
+
+# COMMAND ----------
+
+import time
+from datetime import timedelta
+from databricks.sdk import WorkspaceClient
+from databricks.sdk.service.vectorsearch import EndpointType
+
+w = WorkspaceClient()
+w.vector_search_endpoints.create_endpoint_and_wait(
+    name=ENDPOINT, endpoint_type=EndpointType.STANDARD, timeout=timedelta(minutes=30))
+
+w.api_client.do("POST", "/api/2.0/vector-search/indexes", body={
+    "name": INDEX,
+    "endpoint_name": ENDPOINT,
+    "primary_key": "id",
+    "index_type": "DELTA_SYNC",
+    "delta_sync_index_spec": {
+        "source_table": f"{catalog}.{schema}.coffee_tips",
+        "pipeline_type": "TRIGGERED",
+        "embedding_source_columns": [
+            {"name": "tip", "embedding_model_endpoint_name": "databricks-gte-large-en"}],
+    },
+})
+
+while not w.vector_search_indexes.get_index(INDEX).status.ready:
+    time.sleep(20)
+print("Index ready:", INDEX)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Step 2: semantic search as a function in `FROM`
+# MAGIC The question is plain text. The embedding endpoint turns it into a vector on every query.
+# MAGIC `vector_search()` is in Public Preview, needs DBR 15.3+ and does not run on a classic SQL warehouse.
+# MAGIC Free Edition allows one AI Search endpoint per workspace.
+
+# COMMAND ----------
+
+display(spark.sql(f"""
+SELECT *
+FROM vector_search(
+  index => '{INDEX}',
+  query_text => 'how to brew coffee properly',
+  num_results => 3
+)
+"""))
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Cleanup
-# MAGIC The notebook does not create the index or the endpoint, so it does not delete them.
+# MAGIC We delete the index and the endpoint (it is billed while it runs), then drop the tables.
 
 # COMMAND ----------
 
+w.api_client.do("DELETE", f"/api/2.0/vector-search/indexes/{INDEX}")
+w.api_client.do("DELETE", f"/api/2.0/vector-search/endpoints/{ENDPOINT}")
+spark.sql("DROP TABLE IF EXISTS coffee_tips")
 spark.sql("DROP TABLE IF EXISTS employees")

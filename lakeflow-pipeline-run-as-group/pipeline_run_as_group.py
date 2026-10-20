@@ -7,7 +7,7 @@
 # MAGIC A pipeline with `run_as.group_name`: who owns the table, which groups are not allowed,
 # MAGIC how to switch back to a user and whether `SET OWNER TO` changes anything.
 # MAGIC
-# MAGIC **Requires:** a full (Premium) workspace, Unity Catalog, serverless. Run it as a workspace admin, because it creates an account group.
+# MAGIC **Requires:** Unity Catalog and serverless. Run it as a workspace admin, because it creates an account group. Tested on Free Edition (2026-10-17).
 # MAGIC **Data:** synthetic, 5 rows. Import the whole folder: `pipeline/` holds the pipeline code (one materialized view).
 
 # COMMAND ----------
@@ -39,7 +39,7 @@ spark.sql("""INSERT INTO source_orders VALUES
 
 # MAGIC %md
 # MAGIC ## Step 1: an account group assigned to the workspace, with us as a member
-# MAGIC Requires a full (Premium) workspace. Workspace-local groups can't be run-as.
+# MAGIC Tested on Free Edition (2026-10-17). Workspace-local groups can't be run-as.
 
 # COMMAND ----------
 
@@ -55,7 +55,7 @@ print("group", GROUP, "created and assigned to the workspace")
 
 # MAGIC %md
 # MAGIC ## Step 2: permissions for the group
-# MAGIC Requires a full (Premium) workspace. The pipeline runs as the group, so our own permissions don't count.
+# MAGIC Tested on Free Edition (2026-10-17). The pipeline runs as the group, so our own permissions don't count.
 
 # COMMAND ----------
 
@@ -70,7 +70,7 @@ print("grants and Can read on the pipeline code done")
 
 # MAGIC %md
 # MAGIC ## Step 3: a pipeline with `run_as.group_name`
-# MAGIC Requires a full (Premium) workspace.
+# MAGIC Tested on Free Edition (2026-10-17). Right after step 1 it can fail with "must be a member of the group"; rerun the cell a few minutes later.
 
 # COMMAND ----------
 
@@ -100,7 +100,7 @@ print("update as the group:", run_update())
 
 # MAGIC %md
 # MAGIC ## Step 4: who owns the tables
-# MAGIC Requires a full (Premium) workspace.
+# MAGIC Tested on Free Edition (2026-10-17).
 
 # COMMAND ----------
 
@@ -113,7 +113,7 @@ print("update as the group:", run_update())
 
 # MAGIC %md
 # MAGIC ## Step 5: the built-in `users` group as run-as
-# MAGIC Requires a full (Premium) workspace. The cell prints the error.
+# MAGIC Tested on Free Edition (2026-10-17). The cell prints the error.
 
 # COMMAND ----------
 
@@ -127,7 +127,7 @@ except Exception as e:
 
 # MAGIC %md
 # MAGIC ## Step 6: back to a user: `updated_run_as` or `run_as`?
-# MAGIC Requires a full (Premium) workspace. The docs say to use `updated_run_as` for edits.
+# MAGIC Tested on Free Edition (2026-10-17). The docs say to use `updated_run_as` for edits.
 
 # COMMAND ----------
 
@@ -153,7 +153,7 @@ print("run_as_user_name:", api.do("GET", f"/api/2.0/pipelines/{pid}")["run_as_us
 
 # MAGIC %md
 # MAGIC ## Step 7: `SET OWNER TO` the group on a pipeline table
-# MAGIC Requires a full (Premium) workspace. The cell prints the error.
+# MAGIC Tested on Free Edition (2026-10-17). The cell prints the error.
 
 # COMMAND ----------
 

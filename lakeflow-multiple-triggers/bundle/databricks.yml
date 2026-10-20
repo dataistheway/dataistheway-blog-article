@@ -1,0 +1,42 @@
+bundle:
+  name: multiple_triggers_demo
+
+variables:
+  catalog:
+    default: workspace
+  schema:
+    default: dataistheway_triggers
+
+resources:
+  jobs:
+    orders:
+      name: news134_bundle_triggers
+      tasks:
+        - task_key: log_trigger
+          notebook_task:
+            notebook_path: ./src/log_trigger.py
+            base_parameters:
+              log_table: ${var.catalog}.${var.schema}.trigger_log
+              trigger_type: "{{job.trigger.type}}"
+
+targets:
+  dev:
+    mode: development
+    default: true
+    resources:
+      jobs:
+        orders:
+          triggers:
+            - table_update:
+                table_names: [ "${var.catalog}.${var.schema}.source_orders" ]
+            - schedule:
+                quartz_cron_expression: "0 0 6 * * ?"
+                timezone_id: Europe/Warsaw
+              pause_status: PAUSED
+  prod:
+    resources:
+      jobs:
+        orders:
+          schedule:
+            quartz_cron_expression: "0 0 6 * * ?"
+            timezone_id: Europe/Warsaw

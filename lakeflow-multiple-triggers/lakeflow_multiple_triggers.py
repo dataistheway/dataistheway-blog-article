@@ -74,12 +74,13 @@ print("job created")
 
 # MAGIC %md
 # MAGIC ## Step 2: what the server stored
-# MAGIC Requires a full (Premium) workspace. We read the job back to see how the server stored the `triggers` array.
+# MAGIC Requires a full (Premium) workspace. We read the job back to see how the server stored the `triggers` array and what queue setting the job got.
 
 # COMMAND ----------
 
 settings = api.do("GET", "/api/2.2/jobs/get", query={"job_id": job_id})["settings"]
 print(json.dumps(settings["triggers"], indent=2))
+print("queue:", settings.get("queue"))
 
 # COMMAND ----------
 

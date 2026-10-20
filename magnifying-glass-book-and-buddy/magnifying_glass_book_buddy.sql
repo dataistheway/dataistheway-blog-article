@@ -6,9 +6,10 @@
 -- MAGIC
 -- MAGIC **Data:** synthetic, generated in the notebook (12 short articles about coffee: IDs 1-4 are texts for a professional barista, the rest is noise). No RetailHub files needed. The articles and the search patterns are in Polish on purpose: the article shows how Polish inflection weakens LIKE and regex, and the expected results depend on the Polish word forms.
 -- MAGIC
--- MAGIC **Full-text:** Databricks SQL has no equivalent of `FREETEXTTABLE` (inflection, ranking); `CREATE SEARCH INDEX` (Beta) only matches substrings or whole words. The T-SQL version is in the file `sql_server_like_regex_fts.sql` next to this one.
+-- MAGIC **Full-text:** Databricks SQL has no equivalent of `FREETEXTTABLE` (inflection, ranking). The `search` and `isearch` functions (Beta, DBR 19.0+) match substrings or whole words, without inflection or ranking; `CREATE SEARCH INDEX` (Beta) only speeds them up.
 -- MAGIC
--- MAGIC **Compute:** Serverless or a SQL Warehouse. Works on Free Edition.
+-- MAGIC **Compute:** serverless or a Pro/Serverless SQL warehouse (`ai_similarity` does not run on a Classic SQL warehouse).
+-- MAGIC Tested on Free Edition (2026-10-17): the whole notebook.
 
 -- COMMAND ----------
 
@@ -64,6 +65,7 @@ SELECT COUNT(*) AS rows_loaded FROM coffee_articles;
 
 -- MAGIC %md
 -- MAGIC ## Step 1: the magnifying glass, or LIKE
+-- MAGIC Tested on Free Edition (2026-10-17).
 -- MAGIC The question "jak prawidłowo parzyć kawę" ("how to brew coffee properly") as a LIKE pattern. None of the articles 1-4 contains those words.
 
 -- COMMAND ----------
@@ -92,6 +94,7 @@ ORDER BY id;
 
 -- MAGIC %md
 -- MAGIC ## Step 2: a magnifying glass with better glass, or regex
+-- MAGIC Tested on Free Edition (2026-10-17).
 
 -- COMMAND ----------
 
@@ -112,7 +115,21 @@ FROM coffee_articles;
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## Step 3: the buddy, or similarity of meaning
+-- MAGIC ## Step 3: the book, or isearch
+-- MAGIC Tested on Free Edition (2026-10-17).
+-- MAGIC `isearch` (Beta, DBR 19.0+) finds the whole word `parzenia`, case-insensitive. It does not know other forms of the word: `parzenie` and `parzona` are not found.
+
+-- COMMAND ----------
+
+SELECT id, title
+FROM coffee_articles
+WHERE isearch(body, 'parzenia', mode => 'word');
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ## Step 4: the buddy, or similarity of meaning
+-- MAGIC Tested on Free Edition (2026-10-17).
 -- MAGIC `ai_similarity` compares two texts. No index and no model of your own. Check whether IDs 1-4 are at the top. The question stays in Polish because the data is Polish.
 
 -- COMMAND ----------

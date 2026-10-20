@@ -1,0 +1,36 @@
+# A pipeline that runs as an account group (run_as.group_name).
+# Tested on Databricks CLI v1.20.0 (the field has been in the schema since v1.18.0).
+bundle:
+  name: run_as_group_demo
+
+variables:
+  catalog:
+    default: workspace
+  schema:
+    default: dataistheway_run_as
+  group_name:
+    default: dataistheway-etl-team
+
+# No workspace.root_path: the code stays in the home folder of whoever deploys
+# (in CI: the service principal), so other users can't change it.
+# These permissions give the group CAN_VIEW on the pipeline and Can read on that folder.
+permissions:
+  - level: CAN_VIEW
+    group_name: ${var.group_name}
+
+resources:
+  pipelines:
+    etl:
+      name: dataistheway_etl_bundle
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      serverless: true
+      libraries:
+        - file:
+            path: ./src/mv_total_by_country.sql
+      run_as:
+        group_name: ${var.group_name}
+
+targets:
+  dev:
+    default: true

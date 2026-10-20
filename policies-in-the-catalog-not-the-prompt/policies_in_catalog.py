@@ -7,31 +7,26 @@
 # MAGIC The code follows the order of the article: row filter, column mask, least privilege for the agent and removing the policies.
 # MAGIC
 # MAGIC **Input:** synthetic data generated in the notebook: `gold_customer_360` (400 customers in the states CA, NY, TX,
-# MAGIC FL, WA, IL, some with a `tax_id`, 8 customers with a duplicated row), no personal data. Step 4 needs a
-# MAGIC service principal (widget `principal`) and the flag `run_grants = true`; by default step 4 is skipped.
+# MAGIC FL, WA, IL, some with a `tax_id`, 8 customers with a duplicated row), no personal data.
 # MAGIC
 # MAGIC **Name mapping** (article -> notebook, everything in `<catalog>.<schema>`):
 # MAGIC - `<your_catalog>.<schema>.gold_customer_360` -> `gold_customer_360` (synthetic)
 # MAGIC - `<your_catalog>.<schema>.retail_row_filter` / `mask_tax_id` -> the same names, unqualified
-# MAGIC - `get_average_customer_value`, `get_customer_profile` -> simplified functions created in the notebook (the target of the grants in step 4)
-# MAGIC - `retail_rag_chunks_index` -> widget `search_index` (empty = the grant on the index is skipped)
-# MAGIC - `<agent-sp>` -> widget `principal`
+# MAGIC - `get_average_customer_value`, `get_customer_profile` -> simplified agent tool functions created in the notebook
+# MAGIC - `<agent-sp>` -> widget `principal` (default `account users`, so the step runs on every workspace;
+# MAGIC   in production put the application ID of the agent's service principal here)
 # MAGIC
-# MAGIC The groups `all_states_analysts` and `compliance_officers` stay as in the article. They do not exist on Free Edition,
-# MAGIC so the filter and the mask apply to you as well, which is the point of this exercise.
+# MAGIC The groups `all_states_analysts` and `compliance_officers` stay as in the article. If they do not exist in your account,
+# MAGIC the filter and the mask apply to you as well, which is the point of this exercise.
 
 # COMMAND ----------
 
 dbutils.widgets.text("catalog", "workspace")
 dbutils.widgets.text("schema", "dataistheway")
-dbutils.widgets.text("principal", "<service-principal-application-id>")
-dbutils.widgets.dropdown("run_grants", "false", ["false", "true"])
-dbutils.widgets.text("search_index", "")
+dbutils.widgets.text("principal", "account users")
 catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
 principal = dbutils.widgets.get("principal")
-RUN_GRANTS = dbutils.widgets.get("run_grants") == "true"
-SEARCH_INDEX = dbutils.widgets.get("search_index").strip()
 
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog}.{schema}")
 spark.sql(f"USE CATALOG {catalog}")
@@ -98,7 +93,7 @@ display(spark.sql("SELECT state, COUNT(*) AS customers FROM gold_customer_360 GR
 
 # MAGIC %md
 # MAGIC ## Instructions in Genie (the prompt layer)
-# MAGIC Works on Free Edition (the Instructions field in Genie Agent)
+# MAGIC According to the docs this works on Free Edition, I have not tested it (Genie was tested on the Premium lab)
 # MAGIC
 # MAGIC This is not code to run. Paste it into the **General instructions** of a Genie Agent (formerly Genie space) on the table `gold_customer_360`:
 # MAGIC
@@ -110,7 +105,7 @@ display(spark.sql("SELECT state, COUNT(*) AS customers FROM gold_customer_360 GR
 
 # MAGIC %md
 # MAGIC ## Step 1: row filter
-# MAGIC Works on Free Edition (the `all_states_analysts` group does not exist there, so the filter applies to you as well)
+# MAGIC Tested on Free Edition (2026-10-17); without the `all_states_analysts` group the filter applies to you as well
 
 # COMMAND ----------
 
@@ -136,7 +131,7 @@ display(spark.sql("SELECT state, COUNT(*) AS customers FROM gold_customer_360 GR
 
 # MAGIC %md
 # MAGIC ## Step 2: column mask
-# MAGIC Works on Free Edition
+# MAGIC Tested on Free Edition (2026-10-17)
 
 # COMMAND ----------
 
@@ -163,7 +158,7 @@ display(spark.sql("SELECT state, COUNT(*) AS customers FROM gold_customer_360 GR
 
 # MAGIC %md
 # MAGIC ## Step 3: checking in Genie
-# MAGIC Works on Free Edition
+# MAGIC According to the docs Genie works on Free Edition, I have not tested it (tested on the Premium lab)
 # MAGIC
 # MAGIC No code. In a new Genie chat ask: "How many customers do we have in the state of New York (NY)?" and
 # MAGIC "Show the tax_id and state of five VIP customers". Then check the table's **Sample Data** in Catalog Explorer
@@ -177,45 +172,59 @@ display(spark.sql("DESCRIBE TABLE EXTENDED gold_customer_360"))
 
 # MAGIC %md
 # MAGIC ## Step 4: least privilege for the agent
-# MAGIC Requires a full (Premium) workspace: service principal and account groups
+# MAGIC Tested on Free Edition (2026-10-19)
 # MAGIC
-# MAGIC Runs only with `run_grants = true` and a real `principal` (the application ID of the service principal).
-# MAGIC The grant on the AI Search index runs only if you provide `search_index`.
-# MAGIC The principal also needs `USE CATALOG` and `USE SCHEMA`. The second part of the cell shows the pitfall:
-# MAGIC `CREATE OR REPLACE FUNCTION` wipes the grants.
+# MAGIC The agent calls a tool function instead of reading the table. The row filter still applies inside the function:
+# MAGIC customer 100006 is in CA, customer 100001 is in NY.
 
 # COMMAND ----------
 
-if RUN_GRANTS and not principal.startswith("<"):
-    spark.sql(f"GRANT USE CATALOG ON CATALOG {catalog} TO `{principal}`")
-    spark.sql(f"GRANT USE SCHEMA ON SCHEMA {catalog}.{schema} TO `{principal}`")
-    spark.sql(f"GRANT EXECUTE ON FUNCTION {catalog}.{schema}.get_average_customer_value TO `{principal}`")
-    spark.sql(f"GRANT EXECUTE ON FUNCTION {catalog}.{schema}.get_customer_profile       TO `{principal}`")
-    if SEARCH_INDEX:
-        spark.sql(f"GRANT SELECT  ON TABLE    {SEARCH_INDEX}    TO `{principal}`")
-    # No SELECT on gold_customer_360: the agent gets functions, not the table.
-    display(spark.sql(f"SHOW GRANTS `{principal}` ON FUNCTION {catalog}.{schema}.get_customer_profile"))
-
-    # Pitfall: the same definition again, the grant disappears.
-    spark.sql(PROFILE_DDL)
-    after = spark.sql(f"SHOW GRANTS `{principal}` ON FUNCTION {catalog}.{schema}.get_customer_profile") \
-        .where("ObjectType = 'FUNCTION'").count()
-    print(f"Grants on the function after CREATE OR REPLACE: {after} (expected 0)")
-else:
-    print("Step 4 skipped: set the widget run_grants = true and principal to the application ID of the service principal.")
+# MAGIC %sql
+# MAGIC SELECT get_customer_profile(100006) AS ca_customer,
+# MAGIC        get_customer_profile(100001) AS ny_customer;
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC A test from the identity of the service principal (in the article: 20.09.2026) requires running the queries as that principal,
-# MAGIC e.g. from a job with `run_as` or with an SP token on a SQL warehouse:
-# MAGIC `SELECT get_customer_profile(<id>)` works, `SELECT * FROM gold_customer_360` gives `INSUFFICIENT_PERMISSIONS`.
+# MAGIC Tested on Free Edition (2026-10-19)
+# MAGIC
+# MAGIC The agent's identity gets `EXECUTE` on the functions and `USE SCHEMA`, but no `SELECT` on the table.
+# MAGIC `USE CATALOG` on the catalog is granted by the catalog owner.
+
+# COMMAND ----------
+
+spark.sql(f"GRANT USE SCHEMA ON SCHEMA {catalog}.{schema} TO `{principal}`")
+spark.sql(f"GRANT EXECUTE ON FUNCTION get_average_customer_value TO `{principal}`")
+spark.sql(f"GRANT EXECUTE ON FUNCTION get_customer_profile TO `{principal}`")
+display(spark.sql(f"SHOW GRANTS `{principal}` ON FUNCTION get_customer_profile"))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Pitfall: the same `CREATE OR REPLACE FUNCTION` once more, and the grant on the function is gone.
+
+# COMMAND ----------
+
+spark.sql(PROFILE_DDL)
+display(spark.sql(f"SHOW GRANTS `{principal}` ON FUNCTION get_customer_profile"))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC The fix: `EXECUTE` on the schema with the agent's tools. It is inherited by the functions, also after they are recreated.
+# MAGIC In this demo it is the same schema as the table, because there is only one; in production use a separate schema with tools only.
+
+# COMMAND ----------
+
+spark.sql(f"GRANT EXECUTE ON SCHEMA {catalog}.{schema} TO `{principal}`")
+spark.sql(PROFILE_DDL)
+display(spark.sql(f"SHOW GRANTS `{principal}` ON FUNCTION get_customer_profile"))
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Step 5: cleanup
-# MAGIC Works on Free Edition
+# MAGIC Tested on Free Edition (2026-10-17)
 
 # COMMAND ----------
 
@@ -229,7 +238,7 @@ else:
 
 # MAGIC %md
 # MAGIC ## By the way: define the measure first, then the result
-# MAGIC Works on Free Edition
+# MAGIC Tested on Free Edition (2026-10-17)
 # MAGIC
 # MAGIC No code in the article. Two correct numbers of VIP customers: rows vs unique `customer_id`
 # MAGIC (in the synthetic data the difference is the VIP customers with a duplicated row; in the article 9,541 vs 9,494).
@@ -246,10 +255,12 @@ else:
 
 # MAGIC %md
 # MAGIC ## Cleanup
-# MAGIC The table first (this also removes any policies), then the functions.
+# MAGIC The table first (this also removes any policies), then the functions (this also removes their grants), then the grants on the schema.
 
 # COMMAND ----------
 
 spark.sql("DROP TABLE IF EXISTS gold_customer_360")
 for f in ["retail_row_filter", "mask_tax_id", "get_average_customer_value", "get_customer_profile"]:
     spark.sql(f"DROP FUNCTION IF EXISTS {f}")
+spark.sql(f"REVOKE EXECUTE ON SCHEMA {catalog}.{schema} FROM `{principal}`")
+spark.sql(f"REVOKE USE SCHEMA ON SCHEMA {catalog}.{schema} FROM `{principal}`")

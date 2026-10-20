@@ -79,11 +79,13 @@ LIMIT 20
 
 # COMMAND ----------
 
-# AQE thresholds (usually not readable on serverless)
-for k in ["spark.sql.adaptive.enabled",
+# AQE settings (usually not readable on serverless)
+for k in ["spark.databricks.optimizer.adaptive.enabled",
+          "spark.sql.adaptive.enabled",
           "spark.sql.adaptive.skewJoin.enabled",
           "spark.sql.adaptive.skewJoin.skewedPartitionFactor",
-          "spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes"]:
+          "spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes",
+          "spark.sql.shuffle.partitions"]:
     try:
         print(f"{k:62s} = {spark.conf.get(k)}")
     except Exception as e:
@@ -101,8 +103,8 @@ SELECT /*+ BROADCAST(d) */ f.*, d.segment
 FROM {FACTS} f
 JOIN {DIM} d ON f.customer_id = d.customer_id
 """)
-bc.explain()
 print("rows:", bc.count())
+bc.explain()
 
 # COMMAND ----------
 
@@ -179,8 +181,27 @@ display(facts_s.groupBy("customer_id", "salt").count().orderBy(F.desc("count")).
 
 # COMMAND ----------
 
+# The same two joins with shuffle_hash instead of merge, timed with the noop sink (3 runs each)
+for name, df in [("plain join", facts.join(dim.hint("shuffle_hash"), "customer_id")),
+                 ("salting", facts_s.join(dim_s.hint("shuffle_hash"), ["customer_id", "salt"]))]:
+    times = []
+    for _ in range(3):
+        t0 = time.time()
+        df.write.format("noop").mode("overwrite").save()
+        times.append(round(time.time() - t0, 1))
+    print(f"{name:12s}: {times} s")
+df.explain()
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Step 6: skewed groupBy and window functions
+
+# COMMAND ----------
+
+# repartition() by the key before groupBy: where does the partial aggregation go?
+facts.repartition("customer_id").groupBy("customer_id").agg(F.sum("amount")).explain()
+facts.groupBy("customer_id").agg(F.sum("amount")).explain()
 
 # COMMAND ----------
 
