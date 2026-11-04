@@ -1,0 +1,117 @@
+spec_version: 1
+name: private-review
+description: >-
+  A local model reviews sensitive code; a cloud judge grades that review
+  without file access. No cloud model reads the raw files.
+
+# The judge runs Claude in the cloud. It has no os_env, so the harness gives it
+# no file or shell tools at all (claude-sdk base tools are Skill and ToolSearch).
+# The policies below also deny every other tool except dispatching the
+# local reviewer and reading its final report.
+executor:
+  type: omnigent
+  config:
+    harness: claude-sdk
+    # permission_mode stays at the harness default (auto). With `default`,
+    # claude.ai connector tools also hit the policy gate, but Claude Code then
+    # asks a human before every sys_* call.
+
+# No host skills, no user/project Claude settings or CLAUDE.md in the judge.
+skills: none
+
+tool_groups:
+  browser: false
+  scheduled_tasks: false
+  comments: false
+  policies: false
+
+prompt: |
+  You are private-review, a review JUDGE. You run on a cloud model and you
+  never see the code or data under review. You cannot open files, run commands
+  or read other sessions' transcripts: Omnigent policy blocks those tools.
+
+  Your only source is the report of local_reviewer, a sub-agent on a local
+  model (Ollama on this laptop). It reads the files; you read its report.
+
+  For each request:
+  1. Send local_reviewer ONE scoped task with sys_session_send (agent
+     local_reviewer, a short title). Pass the file paths and the focus areas
+     from the user. Never paste code or data yourself.
+  2. Wait for its report (sys_read_inbox when the runtime tells you it is done).
+  3. Optionally send ONE follow-up to the same title to clarify a finding that
+     is vague or self-contradictory. Then judge.
+
+  Judge the REVIEW, not the code. Output in English, in this shape:
+  - Verdict: how far the review can be trusted (high / medium / low) and why.
+  - Findings table: # | finding (as reported) | your call: valid / likely
+    false positive / unverifiable | severity you would give | reason.
+  - Missing: what a solid review of this kind of file should have covered
+    and did not (e.g. expectations, join fan-out, duplicates, PII masking).
+  - Next step: one concrete action for the human, and whether a stronger
+    reviewer (with file access) must confirm before merge.
+  - Evidence used: "local_reviewer report only; no files read".
+
+  Base every call on the report's internal consistency and on general
+  Databricks / SQL knowledge. Say "unverifiable" rather than guess.
+
+tools:
+  agents:
+    - local_reviewer
+
+guardrails:
+  policies:
+    # Spec policies apply to the judge AND to local_reviewer's session.
+    # Allowed: the judge's dispatch/inbox tools and Pi's read-only file tools
+    # (read, grep, find, ls; the claude-sdk judge has no tools with these
+    # names). Everything else is denied: bash/write/edit for the reviewer, and
+    # for the judge sys_session_get_history (it would return the reviewer's
+    # raw tool output, i.e. the file contents), ui_open_file, load_skill, ...
+    tool_allowlist:
+      type: function
+      function:
+        path: omnigent.policies.builtins.cel.cel_policy
+        arguments:
+          expression: >-
+            event.type != "tool_call" ? {"result": "ALLOW"} :
+            (has(event.data.name) && event.data.name in
+            ["sys_session_send", "sys_read_inbox", "sys_cancel_task", "ToolSearch",
+            "read", "grep", "find", "ls"])
+            ? {"result": "ALLOW"}
+            : {"result": "DENY", "reason": "private-review: the cloud judge may only dispatch local_reviewer and read its final report; local_reviewer may only read files. Shell, write, browser and session-history tools are blocked."}
+    # The judge may not move the reviewer to a cloud model or attach files.
+    reviewer_stays_local:
+      type: function
+      function:
+        path: omnigent.policies.builtins.cel.cel_policy
+        arguments:
+          expression: >-
+            event.type == "tool_call" && event.data.name == "sys_session_send"
+            && (has(event.data.arguments.args.model)
+            || has(event.data.arguments.args.harness)
+            || has(event.data.arguments.args.file_ids))
+            ? {"result": "DENY", "reason": "private-review: local_reviewer must stay on its local Ollama model; model, harness and file overrides are blocked."}
+            : {"result": "ALLOW"}
+    # The review text reaches the judge as the sub-agent result (TOOL_RESULT
+    # phase, target sys_session_send). If it contains an e-mail address, the
+    # judge gets a suppression notice instead of the text. The reviewer's own
+    # file reads are not affected.
+    review_pii_gate:
+      type: function
+      function:
+        path: omnigent.policies.builtins.cel.cel_policy
+        arguments:
+          expression: >-
+            event.type == "tool_result" && event.target == "sys_session_send"
+            && has(event.data.result)
+            && type(event.data.result) == string
+            && event.data.result.matches("[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+[.][A-Za-z0-9.-]+")
+            ? {"result": "DENY", "reason": "private-review: the local review contains an e-mail address, so it was not passed to the cloud judge."}
+            : {"result": "ALLOW"}
+    # Scans what the user types to the judge (request phase) and the start of
+    # each judge turn (llm_request phase). It does not scan tool results.
+    pii_in_user_message:
+      type: function
+      function:
+        path: omnigent.policies.builtins.safety.deny_pii_in_llm_request
+        arguments:
+          pii_types: [email, phone, credit_card]

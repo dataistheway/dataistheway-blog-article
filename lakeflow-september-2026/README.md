@@ -4,7 +4,7 @@ Code for the article https://dataistheway.blog/en/lakeflow-september-2026-change
 
 Creates three small serverless pipelines through the Pipelines REST API and deletes them in two ways: `news104_a` the default way (its tables stay) and `news104_b` with `cascade=true` (its tables go). Then `news104_c` takes over the checkpoint of a plain Structured Streaming query with `import_checkpoint` (Beta), and a PAUSED continuous job gets a maintenance window. The notebook writes the pipeline source files itself (to `/Workspace/Users/<your-login>/dataistheway/news104_src`), so the notebook is the only file to import.
 
-**Runs on:** a full (Premium) workspace with Unity Catalog and serverless. Without admin rights you need `USE CATALOG`, permission to create a schema (or tables, materialized views and a volume in an existing one), and permission to create pipelines and jobs. Step 5 alone also works on Free Edition.
+**Runs on:** a full (Premium) workspace with Unity Catalog and serverless. I ran it as an admin, so I did not work out the minimum set of privileges. The docs require `USE CATALOG` on the catalog, `USE SCHEMA` + `CREATE TABLE` and `USE SCHEMA` + `CREATE MATERIALIZED VIEW` on the schema, and `CREATE SCHEMA` if the schema has to be created; on top of that the notebook needs `CREATE VOLUME`, permission to write workspace files, and permission to create pipelines and jobs. Step 5 uses no pipeline, so it should run on Free Edition too, but I did not test it there. The notebook as a whole needs Premium: step 1 runs two pipelines at once and Free Edition allows one active pipeline per type (`free-edition-limitations`, checked 2026-11-03).
 
 ## How to run
 

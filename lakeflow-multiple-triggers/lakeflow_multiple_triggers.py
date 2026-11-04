@@ -46,7 +46,7 @@ dbutils.fs.mkdirs(LANDING)
 
 # MAGIC %md
 # MAGIC ## Step 1: a job with a `triggers` array
-# MAGIC Requires a full (Premium) workspace. One job, three triggers: a table update, a file arrival and a paused schedule as a backup. The task writes the `{{job.trigger.type}}` value to `trigger_log`.
+# MAGIC Requires the Multiple Triggers preview. Tested on Free Edition (2026-10-17): this step goes through, but the triggered run in step 3 did not start there. One job, three triggers: a table update, a file arrival and a paused schedule as a backup. The task writes the `{{job.trigger.type}}` value to `trigger_log`.
 
 # COMMAND ----------
 
@@ -74,7 +74,7 @@ print("job created")
 
 # MAGIC %md
 # MAGIC ## Step 2: what the server stored
-# MAGIC Requires a full (Premium) workspace. We read the job back to see how the server stored the `triggers` array and what queue setting the job got.
+# MAGIC Requires the Multiple Triggers preview. Tested on Free Edition (2026-10-17): this step goes through. We read the job back to see how the server stored the `triggers` array and what queue setting the job got.
 
 # COMMAND ----------
 

@@ -1,0 +1,13 @@
+spec_version: 1
+name: implementer
+description: Claude Code. Writes and fixes Lakeflow SQL and bundle config for one scoped task.
+executor:
+  type: omnigent
+  config:
+    harness: claude-native
+    permission_mode: auto
+prompt: |
+  You implement one scoped data engineering task in this Databricks Asset Bundle.
+  Read AGENTS.md first. Inspect the data before writing aggregations.
+  Stay within the files named in the task. Finish with `databricks bundle validate`
+  and report the exact commands you ran. Work on a branch; open a PR with `gh pr create`.

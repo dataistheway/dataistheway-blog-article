@@ -130,7 +130,9 @@ display(spark.sql(TABLES))
 
 # MAGIC %md
 # MAGIC ## Step 5: a plain Structured Streaming query with a checkpoint in a volume
-# MAGIC This is the "old" job we want to move into a pipeline. Works on Free Edition.
+# MAGIC This is the "old" job we want to move into a pipeline. Step 5 uses no pipeline, so it should run on Free Edition too,
+# MAGIC but I did not test it there. The notebook as a whole needs Premium: step 1 runs two pipelines at once and Free Edition
+# MAGIC allows one active pipeline per type (`free-edition-limitations`, checked 2026-11-03).
 
 # COMMAND ----------
 

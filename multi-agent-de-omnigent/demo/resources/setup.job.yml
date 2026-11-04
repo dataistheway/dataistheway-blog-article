@@ -1,0 +1,16 @@
+resources:
+  jobs:
+    generate_data:
+      name: retailhub-omni-demo-generate-data
+      tasks:
+        - task_key: generate
+          notebook_task:
+            notebook_path: ../src/setup/generate_data.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+        - task_key: refresh_pipeline
+          depends_on:
+            - task_key: generate
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.retailhub.id}

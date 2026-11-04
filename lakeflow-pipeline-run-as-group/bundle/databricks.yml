@@ -13,7 +13,8 @@ variables:
 
 # No workspace.root_path: the code stays in the home folder of whoever deploys
 # (in CI: the service principal), so other users can't change it.
-# These permissions give the group CAN_VIEW on the pipeline and Can read on that folder.
+# These permissions give the group CAN_VIEW on the pipeline. Can read on the code
+# folder is granted by the CLI itself when you keep the default folder.
 permissions:
   - level: CAN_VIEW
     group_name: ${var.group_name}

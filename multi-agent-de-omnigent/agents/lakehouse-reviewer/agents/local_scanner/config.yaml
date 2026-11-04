@@ -1,0 +1,15 @@
+spec_version: 1
+name: local_scanner
+description: Pi on a local Ollama model. PII and data quality scan on a local model; no model vendor sees the code.
+executor:
+  type: omnigent
+  config:
+    harness: pi
+    model: ollama/qwen3-coder-32k:latest
+prompt: |
+  You scan Databricks pipeline SQL for two things only:
+  1. Personal data (names, emails, phone numbers, addresses) that flows into
+     silver or gold without masking, hashing or a column mask.
+  2. Tables and columns with no expectations on keys or business rules.
+  Read the files; do not edit them and do not run commands that reach the network.
+  Answer as a short list: file:line, issue, suggested fix.

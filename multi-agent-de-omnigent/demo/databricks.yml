@@ -1,0 +1,16 @@
+bundle:
+  name: retailhub-omni-demo
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    default: dataistheway
+  schema:
+    default: omni_demo
+
+targets:
+  dev:
+    mode: development
+    default: true

@@ -12,12 +12,13 @@ Runnable code for the articles on [dataistheway.blog](https://dataistheway.blog/
 | [sql-isnt-dying-its-mutating](sql-isnt-dying-its-mutating/) | [SQL isn't dying, it's mutating](https://dataistheway.blog/en/sql-isnt-dying-its-mutating/) | Free Edition |
 | [policies-in-the-catalog-not-the-prompt](policies-in-the-catalog-not-the-prompt/) | [Policies go to the catalog, not the prompt](https://dataistheway.blog/en/policies-in-the-catalog-not-the-prompt/) | Free Edition, step 4 needs Premium |
 | [magnifying-glass-book-and-buddy](magnifying-glass-book-and-buddy/) | [Magnifying glass, book and buddy](https://dataistheway.blog/en/magnifying-glass-book-and-buddy/) | Free Edition + optional SQL Server 2025 script |
-| [six-layers-of-agent-defence](six-layers-of-agent-defence/) | [Six layers of agent defence](https://dataistheway.blog/en/six-layers-of-agent-defence/) | Free Edition, step 6 needs Premium |
+| [six-layers-of-agent-defence](six-layers-of-agent-defence/) | [Six layers of agent defence](https://dataistheway.blog/en/six-layers-of-agent-defence/) | Premium (Unity Gateway model service); on Free Edition only with the legacy model endpoint |
 | [data-skew-decision-tree](data-skew-decision-tree/) | [Data skew in Spark: a decision tree](https://dataistheway.blog/en/data-skew-decision-tree/) | Free Edition |
 | [lakeflow-multiple-triggers](lakeflow-multiple-triggers/) | [Lakeflow Jobs: multiple triggers on one job](https://dataistheway.blog/en/lakeflow-multiple-triggers/) | Premium, Multiple Triggers preview |
 | [lakeflow-pipeline-run-as-group](lakeflow-pipeline-run-as-group/) | [Lakeflow: a pipeline that doesn't belong to one person](https://dataistheway.blog/en/lakeflow-pipeline-run-as-group/) | Premium, workspace admin |
-| [genie-one-mcp](genie-one-mcp/) | [Genie One MCP: any agent can ask about your data, and permissions stay in Unity Catalog](https://dataistheway.blog/en/genie-one-mcp/) | Premium (step 1 on Free Edition) |
+| [genie-one-mcp](genie-one-mcp/) | [Genie One MCP: any agent asks, Unity Catalog keeps the permissions](https://dataistheway.blog/en/genie-one-mcp/) | Premium (step 1 on Free Edition) |
 | [lakeflow-september-2026](lakeflow-september-2026/) | [Lakeflow, September 2026: deleting a pipeline keeps its tables](https://dataistheway.blog/en/lakeflow-september-2026-changes/) | Premium |
+| [multi-agent-de-omnigent](multi-agent-de-omnigent/) | [Multi-agent AI with Omnigent on Databricks](https://dataistheway.blog/en/multi-agent-data-engineering-omnigent-databricks/) | Premium (Databricks Apps, Lakebase) + your machine with Claude Code, Codex and Ollama |
 
 ## How to run a notebook
 

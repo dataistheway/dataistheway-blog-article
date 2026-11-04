@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # DBFS is gone from new workspaces. What changes on September 30, 2026 and how to prepare
+# MAGIC # DBFS is gone from new workspaces. What changed on October 8, 2026 and how to migrate
 # MAGIC
 # MAGIC Code for the article [https://dataistheway.blog/en/dbfs-september-30-2026/](https://dataistheway.blog/en/dbfs-september-30-2026/).
 # MAGIC
@@ -29,7 +29,7 @@ spark.sql(f"USE SCHEMA {schema}")
 
 # MAGIC %md
 # MAGIC ## Step 1: old paths on a workspace without legacy features
-# MAGIC On a workspace without legacy features (every new one since September 30, 2026) DBFS root and Hive Metastore are disabled, so both reads end with an error.
+# MAGIC On a workspace without legacy features (every new one since October 8, 2026) DBFS root and Hive Metastore are disabled, so both reads end with an error.
 # MAGIC Tested on Free Edition (2026-10-17): the same two errors
 
 # COMMAND ----------

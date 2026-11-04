@@ -1,0 +1,14 @@
+resources:
+  pipelines:
+    retailhub:
+      name: retailhub-omni-demo
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      serverless: true
+      continuous: false
+      configuration:
+        catalog: ${var.catalog}
+        schema: ${var.schema}
+      libraries:
+        - glob:
+            include: ../src/pipeline/**

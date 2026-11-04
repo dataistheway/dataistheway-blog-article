@@ -56,6 +56,7 @@ print("group", GROUP, "created and assigned to the workspace")
 # MAGIC %md
 # MAGIC ## Step 2: permissions for the group
 # MAGIC Tested on Free Edition (2026-10-17). The pipeline runs as the group, so our own permissions don't count.
+# MAGIC `MODIFY` is on the docs list; the matrix in the article shows the MV doesn't need it.
 
 # COMMAND ----------
 
