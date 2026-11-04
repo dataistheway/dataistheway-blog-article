@@ -46,7 +46,7 @@ dbutils.fs.mkdirs(LANDING)
 
 # MAGIC %md
 # MAGIC ## Step 1: a job with a `triggers` array
-# MAGIC Requires the Multiple Triggers preview. Tested on Free Edition (2026-10-17): this step goes through, but the triggered run in step 3 did not start there. One job, three triggers: a table update, a file arrival and a paused schedule as a backup. The task writes the `{{job.trigger.type}}` value to `trigger_log`.
+# MAGIC Requires the Multiple Triggers preview. Tested on Free Edition (2026-10-17): this step goes through. The triggered run in step 3 was not tested there: the notebook ran as a job and took the only active run. One job, three triggers: a table update, a file arrival and a paused schedule as a backup. The task writes the `{{job.trigger.type}}` value to `trigger_log`.
 
 # COMMAND ----------
 
