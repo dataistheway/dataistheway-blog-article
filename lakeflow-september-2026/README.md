@@ -1,31 +1,23 @@
-# Lakeflow in September 2026: deleting a pipeline, maintenance windows and import_checkpoint
+# Lakeflow in September 2026: deleting a pipeline, orphaned tables and maintenance windows
 
 Code for the article https://dataistheway.blog/en/lakeflow-september-2026-changes/.
 
-Creates three small serverless pipelines through the Pipelines REST API and deletes them in two ways: `news104_a` the default way (its tables stay) and `news104_b` with `cascade=true` (its tables go). Then `news104_c` takes over the checkpoint of a plain Structured Streaming query with `import_checkpoint` (Beta), and a PAUSED continuous job gets a maintenance window. The notebook writes the pipeline source files itself (to `/Workspace/Users/<your-login>/dataistheway/news104_src`), so the notebook is the only file to import.
+Three small notebooks, one per change. Each one is independent: it creates what it needs, shows one thing and cleans up after itself. They create pipelines and jobs through the REST API and write the pipeline source files themselves (to `/Workspace/Users/<your-login>/dataistheway/news104_src`), so the notebook is the only file to import.
 
-**Runs on:** a full (Premium) workspace with Unity Catalog and serverless. I ran it as an admin, so I did not work out the minimum set of privileges. The docs require `USE CATALOG` on the catalog, `USE SCHEMA` + `CREATE TABLE` and `USE SCHEMA` + `CREATE MATERIALIZED VIEW` on the schema, and `CREATE SCHEMA` if the schema has to be created; on top of that the notebook needs `CREATE VOLUME`, permission to write workspace files, and permission to create pipelines and jobs. Step 5 uses no pipeline, so it should run on Free Edition too, but I did not test it there. The notebook as a whole needs Premium: step 1 runs two pipelines at once and Free Edition allows one active pipeline per type (`free-edition-limitations`, checked 2026-11-03).
+| Notebook | What it shows |
+|---|---|
+| `1_delete_pipeline.py` | Deleting a pipeline the default way keeps its streaming table and materialized view; they can be read, but new data no longer reaches them. `cascade=true` deletes them. |
+| `2_orphaned_tables.py` | Finding orphaned tables (their `pipeline_id` points at a pipeline that no longer exists), what happens when the same pipeline is deployed again (it fails: the tables are still managed by the deleted pipeline) and moving the tables to the new pipeline with `pipelines.pipelineId`. |
+| `3_maintenance_window.py` | A PAUSED continuous job that runs a pipeline, with a `maintenance_window`, and two settings the API rejects. Nothing runs continuously. |
+
+**Runs on:** a full (Premium) workspace with Unity Catalog and serverless. I ran it as an admin, so I did not work out the minimum set of privileges. The docs require `USE CATALOG` on the catalog, `USE SCHEMA` + `CREATE TABLE` and `USE SCHEMA` + `CREATE MATERIALIZED VIEW` on the schema, and `CREATE SCHEMA` if the schema has to be created; on top of that the notebooks need permission to write workspace files and to create pipelines and jobs. Notebook 1 runs two pipelines at once and Free Edition allows one active pipeline per type (`free-edition-limitations`, checked 2026-11-03).
 
 ## How to run
 
-1. Import `lakeflow_september_2026.py` into your workspace (**Workspace → Import → File**, or `databricks workspace import`).
+1. Import a notebook into your workspace (**Workspace → Import → File**, or `databricks workspace import`).
 2. Attach it to Serverless compute.
 3. Set the widgets `catalog` and `schema`. The schema is created if it does not exist.
-4. Run all cells. The last cell removes the job, the pipelines, the tables, the volume and the pipeline source files. The schema, the parent `dataistheway` folder and internal `__materialization_mat_*` tables may stay; drop them yourself if needed.
-5. If a run stops halfway, clean up before you start again, because the pipeline, job, table and volume names must be free. The Cleanup cell needs `job_id` and `pid_c` from earlier steps, so delete the leftover `news104_*` pipelines with `databricks pipelines delete <id> --cascade` and the `news104_continuous` job by hand, then run the `DROP` statements and the workspace delete from the Cleanup cell.
+4. Run all cells. The last cell removes what the notebook created. The schema, the parent `dataistheway` folder and internal `__materialization_mat_*` tables may stay; drop them yourself if needed.
+5. If a run stops halfway, delete the leftover `news104_*` pipelines (`databricks pipelines delete <id> --cascade`) and the `news104_mw_job` job by hand, then run the Cleanup cell, because the names must be free.
 
-## What each step does
-
-- **Setup:** a source table `source_orders` (5 rows), a volume for the checkpoint and two small helpers: create a pipeline and wait for its update.
-- **Step 1:** pipelines `news104_a` and `news104_b`, each with a streaming table (`a_orders`, `b_orders`) and a materialized view (`a_total_by_country`, `b_total_by_country`), and the `effective_publishing_mode`.
-- **Step 2:** delete `news104_a` without `cascade`: the pipeline is gone, its tables stay and can still be read.
-- **Step 3:** try `REFRESH` on the orphaned tables and print the result or the error.
-- **Step 4:** delete `news104_b` with `cascade=true`: its tables are gone.
-- **Step 5:** a plain Structured Streaming query (`availableNow`) writes `ss_orders` with a checkpoint in the volume, then 3 new rows arrive in the source.
-- **Step 6:** pipeline `news104_c` with `dp.create_table` and `@dp.append_flow(import_checkpoint=...)`: `c_orders` gets only the 3 new rows.
-- **Step 7:** a job with a `continuous` trigger in `PAUSED` state and a `maintenance_window`, read back with `jobs/get`.
-- **Cleanup:** deletes the job, pipeline C with `cascade=true`, the remaining tables, the volume and the pipeline source files.
-
-## Notes
-
-`REFRESH` in step 3 depends on the workspace preview "MV and ST in Serverless Notebooks and Jobs": without it serverless notebook compute rejects it with `MV_NOT_ENABLED_ON_SERVERLESS_GENERIC_COMPUTE`. The table list is filtered to this notebook's objects, plus the pipelines' `event_log_*` and internal `__materialization_*` tables, so other pipelines writing to the same schema may show up there too. Each pipeline update takes about a minute, so the whole run takes a few minutes.
+Each pipeline update takes about a minute, so notebooks 1 and 2 take 3-5 minutes each.
