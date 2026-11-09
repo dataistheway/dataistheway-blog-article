@@ -40,9 +40,18 @@ spark.sql("INSERT INTO source_orders VALUES (1, 120.00, current_timestamp() - IN
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC -- the freshness check: how old the newest row is (the task runs the same query)
+# MAGIC SELECT max(ingested_at) AS newest_row,
+# MAGIC        round((unix_timestamp() - unix_timestamp(max(ingested_at))) / 3600) AS hours_old
+# MAGIC FROM source_orders
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Step 1: table update plus a backup schedule
-# MAGIC The schedule runs every minute only for this demo. The task gets the trigger type and a 24-hour SLA.
+# MAGIC The schedule runs every minute only for this demo. The task (`task/check_freshness.py`) gets the trigger type and a 24-hour SLA:
+# MAGIC when the run comes from the schedule (`periodic`) and the newest row is older than 24 h, it raises an error, so the run fails and the usual failed-run notification fires.
 
 # COMMAND ----------
 
