@@ -2,37 +2,36 @@
 
 Code for the article https://dataistheway.blog/en/lakeflow-multiple-triggers/.
 
-Creates a job with three triggers through the Jobs REST API (table update, file arrival and a paused schedule as a backup) and shows which trigger started each run. `task/log_trigger.py` is the notebook the job runs: it logs `{{job.trigger.type}}` to a table.
+Three small notebooks, each with its own setup and cleanup. They call the Jobs REST API from a notebook on serverless and create a job named `news134_multiple_triggers`. `task/` holds the notebooks the job runs.
 
-**Runs on:** a full (Premium) workspace with serverless and the **Multiple Triggers** preview enabled (workspace Previews page).
+**Runs on:** a workspace with serverless and the **Multiple Triggers** preview enabled (workspace Previews page). Recorded on a Premium workspace.
+
+| Notebook | What it shows | Time |
+|---|---|---|
+| `01_which_trigger.py` | Two file arrival triggers: `{{job.trigger.file_arrival.location}}` tells which folder started the run. Adding a table update trigger to the same job is rejected while the task uses that value. | ~6 min |
+| `02_update_triggers.py` | Resuming one trigger the safe way (read the array, change it, send it back) and the wrong way (one element replaces the whole array); the legacy `schedule` field is rejected. No job runs. | ~1 min |
+| `03_freshness_check.py` | A table update trigger plus a backup schedule. The task (`task/check_freshness.py`) fails a run started by the schedule when the newest row is older than the SLA; a run started by a table change skips the check. | ~4 min |
 
 ## How to run
 
-1. Import the whole folder into your workspace (for example `databricks workspace import-dir <folder> /Workspace/Users/<your-login>/<folder>`), so `lakeflow_multiple_triggers.py` and its subfolder sit next to each other.
-2. Attach it to Serverless compute.
-3. Set the widgets `catalog` and `schema`. The schema is created if it does not exist.
-4. Run all cells. The last cell removes everything the notebook created.
-
-## What each step does
-
-- **Step 0:** a source table, a log table and a volume for incoming files.
-- **Step 1:** create the job with a `triggers` array.
-- **Step 2:** read the job back: the server adds `condition: ALL_UPDATED` and an explicit `pause_status`; the cell also prints the job's `queue` setting.
-- **Step 3:** insert rows and wait for a run with `trigger = TABLE`.
-- **Step 4:** drop a file into the volume and wait for a run with `trigger = FILE_ARRIVAL`, then show what the task logged.
-- **Step 5:** send `jobs/update` with one trigger and see that it replaces the whole array.
-- **Step 6:** the legacy `schedule` field is rejected on a job that uses `triggers`.
-- **Cleanup:** deletes the job, tables and volume.
+1. Import the whole folder into your workspace (for example `databricks workspace import-dir <folder> /Workspace/Users/<your-login>/<folder>`), so the notebooks and `task/` sit next to each other.
+2. Attach a notebook to Serverless compute.
+3. Set the widgets `catalog` and `schema` (default schema `news_134`). The schema is created if it does not exist.
+4. Run all cells. The last cell deletes the job, tables and volume (the schema stays).
 
 ## Notes
 
-Import the whole folder (the notebook and `task/`), because the job runs `task/log_trigger` from the path next to the notebook. Step 3 waits 90 s before the insert, so the whole notebook takes about 5 minutes.
-
-If the notebook stops before the last cell, delete the `news134_multiple_triggers` job by hand: it keeps active triggers (table update and file arrival until step 5, and after step 5 only an unpaused daily schedule).
+- `01` and `03` wait 90 s before the first change: in my lab a change right after `jobs/create` or `jobs/update` did not start a run.
+- `03` creates a schedule that fires every minute, only for the demo, and pauses it after the first run. If the notebook stops before the last cell, delete the `news134_multiple_triggers` job by hand.
 
 ## Bundle version
 
-`bundle/` holds the layout from the article as a Declarative Automation Bundle: the base job has no trigger, the `dev` target (`mode: development`) adds the `triggers` array (table update and a paused backup schedule), and the `prod` target adds a plain `schedule`. Tested with Databricks CLI 1.20.0. The dev target needs the Multiple Triggers preview; the tables come from the notebook's step 0 (or create `source_orders` and `trigger_log` yourself).
+`bundle/` holds the layout from the article as a Declarative Automation Bundle: the base job has no trigger, the `dev` target (`mode: development`) adds the `triggers` array (table update and a paused backup schedule), and the `prod` target adds a plain `schedule`. Tested with Databricks CLI 1.20.0. The dev target needs the Multiple Triggers preview; create the two tables first (below).
+
+```sql
+CREATE TABLE <catalog>.<schema>.source_orders (id INT, country STRING, amount DECIMAL(10,2));
+CREATE TABLE <catalog>.<schema>.trigger_log (ts TIMESTAMP, trigger_type STRING);
+```
 
 ```sh
 cd bundle
